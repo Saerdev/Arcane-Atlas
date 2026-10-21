@@ -3,7 +3,7 @@
   const $ = (id) => document.getElementById(id);
   const els = {
     search: $('search'), sort: $('sort'), direction: $('sort-direction'),
-    online: $('online-only'), priced: $('priced-only'), sources: $('source-tooltips'), favorites: $('favorites-only'),
+    priced: $('priced-only'), sources: $('source-tooltips'), favorites: $('favorites-only'),
     refresh: $('refresh-button'), export: $('export-button'), body: $('table-body'),
     head: $('table-head'), count: $('result-count'), bottomCount: $('bottom-count'),
     progressArea: $('progress-area'), progressLabel: $('progress-label'), progressCount: $('progress-count'),
@@ -117,18 +117,10 @@
       ? '<span class="amount empty">—</span>'
       : `<span class="amount ${cls}">${esc(amount.toLocaleString('en-US', { maximumFractionDigits: 2 }))}</span><span class="amount-pt">p</span>`;
   }
-  function getSide(item, rank) {
-    const quotes = state.prices.get(item.slug)?.quotes;
-    return quotes?.[rank]?.[els.online.checked ? 'online' : 'recent'] || null;
-  }
-  function getSpread(side) {
-    return side && side.ask != null && side.bid != null ? side.ask - side.bid : null;
-  }
-  function countSide(side) { return side ? side.sellers + side.buyers : 0; }
-  function volume(item) { return countSide(getSide(item, 'rank0')) + countSide(getSide(item, 'rankMax')); }
+  function getStats(item, rank) { return state.prices.get(item.slug)?.stats?.[rank] || null; }
   function salesVolume(item) {
-    const data = state.prices.get(item.slug)?.sales48h;
-    return data?.[state.view === 'compare' ? 'allRanks' : state.view] ?? null;
+    const stats = state.prices.get(item.slug)?.stats;
+    return state.view === 'compare' ? stats?.volume48hAll ?? null : stats?.[state.view]?.volume48h ?? null;
   }
   function showVolume(value) {
     return value == null ? '<span class="amount empty">—</span>'
@@ -137,18 +129,14 @@
   function sortVal(item) {
     switch (state.sort) {
       case 'name': return item.name.toLocaleLowerCase();
-      case 'rank0.ask': return getSide(item, 'rank0')?.ask ?? null;
-      case 'rank0.bid': return getSide(item, 'rank0')?.bid ?? null;
-      case 'rankMax.ask': return getSide(item, 'rankMax')?.ask ?? null;
-      case 'rankMax.bid': return getSide(item, 'rankMax')?.bid ?? null;
-      case 'spread': return getSpread(getSide(item, 'rankMax'));
-      case 'rank0.spread': return getSpread(getSide(item, 'rank0'));
-      case 'volume': return volume(item);
+      case 'rank0.avg48h': return getStats(item, 'rank0')?.avg48h ?? null;
+      case 'rankMax.avg48h': return getStats(item, 'rankMax')?.avg48h ?? null;
+      case 'rank0.latestHourly': return getStats(item, 'rank0')?.latestHourly ?? null;
+      case 'rankMax.latestHourly': return getStats(item, 'rankMax')?.latestHourly ?? null;
       case 'sales48h': return salesVolume(item);
       default: return item.name.toLocaleLowerCase();
     }
   }
-
   function visibleItems() {
     const q = els.search.value.trim().toLocaleLowerCase();
     return state.items.filter((item) => {
@@ -156,8 +144,7 @@
       if (state.favoritesOnly && !state.favorites.has(item.slug)) return false;
       if (els.priced.checked) {
         const ranks = state.view === 'compare' ? ['rank0', 'rankMax'] : [state.view];
-        const sides = ranks.map((rank) => getSide(item, rank));
-        if (!sides.some((s) => s && (s.ask != null || s.bid != null))) return false;
+        if (!ranks.some((rank) => getStats(item, rank)?.avg48h != null)) return false;
       }
       return true;
     }).sort((a, b) => {
@@ -179,17 +166,23 @@
     let columns;
     if (state.view === 'compare') {
       columns = [
-        header('Arcane', 'name', 'Item / max rank'), header('Rank 0 · Sell', 'rank0.ask', 'Lowest asking price'),
-        header('Rank 0 · Buy', 'rank0.bid', 'Highest buying offer'), header('Max · Sell', 'rankMax.ask', 'Lowest asking price'),
-        header('Max · Buy', 'rankMax.bid', 'Highest buying offer'), header('Spread', 'spread', 'At max rank'),
-        header('Listings', 'volume', 'Both displayed ranks'), header('48h volume', 'sales48h', 'Reported closed orders · all ranks'), '<th scope="col" data-sort="none">Actions</th>',
+        header('Arcane', 'name', 'Item / max rank'),
+        header('Rank 0 · 48h Avg', 'rank0.avg48h', 'Volume-weighted reported closed-order average'),
+        header('Rank 0 · Last', 'rank0.latestHourly', 'Median in last hour with reported closed orders'),
+        header('Max · 48h Avg', 'rankMax.avg48h', 'Volume-weighted reported closed-order average'),
+        header('Max · Last', 'rankMax.latestHourly', 'Median in last hour with reported closed orders'),
+        header('48h Volume', 'sales48h', 'Reported closed orders · all ranks'),
+        '<th scope="col" data-sort="none">Actions</th>',
       ];
     } else {
       const rank = state.view, scope = rank === 'rank0' ? 'Rank 0' : 'Max rank';
-      columns = [header('Arcane', 'name', 'Item / max rank'), header(`${scope} · Sell`, `${rank}.ask`, 'Lowest asking price'),
-        header(`${scope} · Buy`, `${rank}.bid`, 'Highest buying offer'),
-        header('Spread', rank === 'rankMax' ? 'spread' : 'rank0.spread', 'Ask minus bid'),
-        header('Listings', 'volume', 'Selected rank'), header('48h volume', 'sales48h', 'Reported closed orders · selected rank'), '<th scope="col" data-sort="none">Actions</th>'];
+      columns = [
+        header('Arcane', 'name', 'Item / max rank'),
+        header(scope + ' · 48h Avg', rank + '.avg48h', 'Volume-weighted closed-order average'),
+        header(scope + ' · Last', rank + '.latestHourly', 'Last reported traded hour'),
+        header('48h Volume', 'sales48h', 'Reported closed orders · selected rank'),
+        '<th scope="col" data-sort="none">Actions</th>',
+      ];
     }
     els.head.innerHTML = `<tr>${columns.join('')}</tr>`;
   }
@@ -305,21 +298,16 @@
     const marketUrl = `https://warframe.market/items/${encodeURIComponent(item.slug)}`;
     return `<div class="item-cell" data-acquisition="${esc(item.slug)}">${icon}<div class="item-details"><a class="item-name" target="_blank" rel="noopener noreferrer" href="${marketUrl}">${esc(item.name)}</a><span class="item-sub">${item.maxRank > 0 ? `MAX RANK ${item.maxRank}` : 'UNRANKED'}</span></div></div>`;
   }
-  function spreadCell(side) {
-    const value = getSpread(side);
-    if (value == null) return '<span class="amount empty">—</span>';
-    return `<span class="spread${value < 0 ? ' negative' : ''}">${esc(value.toLocaleString('en-US', { maximumFractionDigits: 2 }))} p</span>`;
-  }
   function row(item) {
-    const rank0 = getSide(item, 'rank0'), rankMax = getSide(item, 'rankMax');
+    const r0 = getStats(item, 'rank0'), max = getStats(item, 'rankMax');
     const fav = state.favorites.has(item.slug);
     const marketUrl = `https://warframe.market/items/${encodeURIComponent(item.slug)}`;
-    const action = `<td class="action-cell"><div class="action-group"><button type="button" class="favorite-btn${fav ? ' active' : ''}" aria-label="${fav ? 'Remove from' : 'Add to'} watchlist: ${esc(item.name)}" aria-pressed="${fav}" data-favorite="${esc(item.slug)}">${fav ? '★' : '☆'}</button><a class="outbound-link" href="${marketUrl}" target="_blank" rel="noopener noreferrer" title="View on Warframe.market" aria-label="Open ${esc(item.name)} on Warframe.market">Market ↗</a><a class="wiki-link" href="${esc(wikiUrl(item))}" target="_blank" rel="noopener noreferrer" title="Acquisition details on Warframe Wiki" aria-label="Open ${esc(item.name)} on Warframe Wiki">Wiki ↗</a></div></td>`;
+    const action = `<td class="action-cell"><div class="action-group"><button type="button" class="favorite-btn${fav ? ' active' : ''}" aria-label="${fav ? 'Remove from' : 'Add to'} watchlist: ${esc(item.name)}" aria-pressed="${fav}" data-favorite="${esc(item.slug)}">${fav ? '★' : '☆'}</button><a class="outbound-link" href="${marketUrl}" target="_blank" rel="noopener noreferrer">Market ↗</a><a class="wiki-link" href="${esc(wikiUrl(item))}" target="_blank" rel="noopener noreferrer">Wiki ↗</a></div></td>`;
     if (state.view === 'compare') {
-      return `<tr><td>${itemCell(item)}</td><td>${showPrice(rank0?.ask, 'ask')}</td><td>${showPrice(rank0?.bid, 'bid')}</td><td>${showPrice(rankMax?.ask, 'ask')}</td><td>${showPrice(rankMax?.bid, 'bid')}</td><td>${spreadCell(rankMax)}</td><td><span class="listing-count">${volume(item)}</span></td><td>${showVolume(salesVolume(item))}</td>${action}</tr>`;
+      return `<tr><td>${itemCell(item)}</td><td>${showPrice(r0?.avg48h, 'ask')}</td><td>${showPrice(r0?.latestHourly, 'bid')}</td><td>${showPrice(max?.avg48h, 'ask')}</td><td>${showPrice(max?.latestHourly, 'bid')}</td><td>${showVolume(salesVolume(item))}</td>${action}</tr>`;
     }
-    const side = state.view === 'rank0' ? rank0 : rankMax;
-    return `<tr><td>${itemCell(item)}</td><td>${showPrice(side?.ask, 'ask')}</td><td>${showPrice(side?.bid, 'bid')}</td><td>${spreadCell(side)}</td><td><span class="listing-count">${countSide(side)}</span></td><td>${showVolume(salesVolume(item))}</td>${action}</tr>`;
+    const stat = state.view === 'rank0' ? r0 : max;
+    return `<tr><td>${itemCell(item)}</td><td>${showPrice(stat?.avg48h, 'ask')}</td><td>${showPrice(stat?.latestHourly, 'bid')}</td><td>${showVolume(salesVolume(item))}</td>${action}</tr>`;
   }
 
   function render() {
@@ -327,7 +315,7 @@
     state.renderPending = false;
     renderHeader();
     const matches = visibleItems();
-    const colSpan = state.view === 'compare' ? 9 : 7;
+    const colSpan = state.view === 'compare' ? 7 : 5;
     if (matches.length === 0) {
       const message = state.loadingCatalog ? 'Loading the published arcane price snapshot…'
         : state.favoritesOnly && !state.favorites.size ? 'Your watchlist is empty. Star an arcane to save it here.'
@@ -387,7 +375,7 @@
       if (!response.ok) throw new Error(`The published data file returned HTTP ${response.status}.`);
       const snapshot = await response.json();
       if (request !== state.fetchSequence) return;
-      if (snapshot.schemaVersion !== 1 || !Array.isArray(snapshot.items) || !Array.isArray(snapshot.prices)) {
+      if (snapshot.schemaVersion !== 2 || !Array.isArray(snapshot.items) || !Array.isArray(snapshot.prices)) {
         throw new Error('The price snapshot has an unsupported format.');
       }
       if (!snapshot.items.length || !snapshot.completedAt) {
@@ -407,14 +395,14 @@
       state.catalog = new Map(state.items.map((item) => [item.slug, item]));
       state.prices = new Map(snapshot.prices.map((p) => [p.slug, p]));
       state.completedAt = Number(snapshot.completedAt) || 0;
-      state.volumeUpdatedAt = Number(snapshot.volumeUpdatedAt) || 0;
+      state.volumeUpdatedAt = state.completedAt;
       state.failed = Number(snapshot.failed) || 0;
       state.processed = state.prices.size;
       state.loadingCatalog = false;
       if (state.failed) {
-        notice(`${state.failed} arcane quotes were unavailable in this snapshot and are shown as missing.`);
+        notice(`${state.failed} arcane statistics were unavailable in this snapshot and are shown as missing.`);
       } else if (Date.now() - state.completedAt > 3 * 3600000) {
-        notice('This snapshot is more than 3 hours old. Listed prices and trader online status may no longer be current.');
+        notice('This statistics snapshot is more than 3 hours old. Reported closed-order prices may be stale.');
       }
     } catch (error) {
       if (request !== state.fetchSequence) return;
@@ -433,7 +421,7 @@
     if (state.sort === field) state.direction = state.direction === 'asc' ? 'desc' : 'asc';
     else {
       state.sort = field;
-      state.direction = field === 'name' || field.endsWith('.ask') ? 'asc' : 'desc';
+      state.direction = field === 'name' ? 'asc' : 'desc';
     }
     els.sort.value = state.sort;
     updateDirection();
@@ -446,13 +434,13 @@
   }
   function csvValue(value) { return `"${String(value ?? '').replaceAll('"', '""')}"`; }
   function exportCSV() {
-    const headers = ['Arcane', 'Max Rank', 'Rank 0 Sell (pt)', 'Rank 0 Buy (pt)', 'Rank 0 Median Ask (pt)', 'Max Rank Sell (pt)', 'Max Rank Buy (pt)', 'Max Rank Median Ask (pt)', 'Max Rank Spread (pt)', 'Listings (both ranks)', '48h Volume (all ranks)', '48h Volume (rank 0)', '48h Volume (max rank)', 'Volume Updated At (UTC)', 'Market URL', 'Recorded Drop Sources', 'Wiki URL', 'Rank 0 Effect', 'Max Rank Effect'];
+    const headers = ['Arcane', 'Max Rank', 'Rank 0 48h Avg (pt)', 'Rank 0 Latest Hour Median (pt)', 'Rank 0 Latest Hour Time', 'Max Rank 48h Avg (pt)', 'Max Rank Latest Hour Median (pt)', 'Max Rank Latest Hour Time', '48h Volume (all ranks)', '48h Volume (rank 0)', '48h Volume (max rank)', 'Snapshot Updated At (UTC)', 'Market URL', 'Recorded Drop Sources', 'Wiki URL', 'Rank 0 Effect', 'Max Rank Effect'];
     const data = visibleItems().map((item) => {
-      const r0 = getSide(item, 'rank0'), max = getSide(item, 'rankMax');
-      return [item.name, item.maxRank, r0?.ask, r0?.bid, r0?.medianAsk, max?.ask, max?.bid, max?.medianAsk,
-        getSpread(max), volume(item), state.prices.get(item.slug)?.sales48h?.allRanks,
-        state.prices.get(item.slug)?.sales48h?.rank0, state.prices.get(item.slug)?.sales48h?.rankMax,
-        state.volumeUpdatedAt ? new Date(state.volumeUpdatedAt).toISOString() : '',
+      const r0 = getStats(item, 'rank0'), max = getStats(item, 'rankMax');
+      return [item.name, item.maxRank, r0?.avg48h, r0?.latestHourly, r0?.latestHourAt,
+        max?.avg48h, max?.latestHourly, max?.latestHourAt,
+        state.prices.get(item.slug)?.stats?.volume48hAll, r0?.volume48h, max?.volume48h,
+        state.completedAt ? new Date(state.completedAt).toISOString() : '',
         `https://warframe.market/items/${encodeURIComponent(item.slug)}`,
         (item.acquisitionSources || []).map((source) => source.location).join('; '), wikiUrl(item),
         item.effects?.rank0, item.effects?.rankMax].map(csvValue).join(',');
@@ -468,7 +456,6 @@
   }
 
   els.search.addEventListener('input', scheduleRender);
-  els.online.addEventListener('change', scheduleRender);
   els.priced.addEventListener('change', scheduleRender);
   els.sources.addEventListener('change', () => {
     if (!els.sources.checked) hideTooltip();
