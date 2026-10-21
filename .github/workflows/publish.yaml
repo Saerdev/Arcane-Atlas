@@ -4,11 +4,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  # Workflow is triggered every 30 minutes externally by cron-job.org since github workflow scheduling has been unreliable
-  # Every 30 minutes, offset from the busy top-of-hour window. Scheduled
-  # executions are best-effort and can be delayed or dropped by GitHub.
-  #schedule:
-  #  - cron: "17,47 * * * *"
+  # Trigger externally via cron-job.org once hourly (configure in cron-job.org).
+  # No GitHub Actions schedule is enabled to avoid double refreshes.
 
 permissions:
   contents: write # keep a dormant public repo active so GitHub does not disable scheduled refreshes
@@ -37,7 +34,7 @@ jobs:
         id: volume-date
         run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
 
-      - name: Restore daily volume statistics
+      - name: Restore daily volume statistics (unused by closed-order collector)
         uses: actions/cache@v5
         with:
           path: .cache/volume.json
@@ -45,7 +42,7 @@ jobs:
           restore-keys: |
             arcane-volume-${{ runner.os }}-
 
-      - name: Generate fresh prices (Python standard library only)
+      - name: Generate hourly closed-order statistics snapshot
         env:
           WFM_USER_AGENT: ArcaneAtlas/2.0 (+https://github.com/${{ github.repository }})
         run: python3 scripts/update_prices.py --output site/data/prices.json
