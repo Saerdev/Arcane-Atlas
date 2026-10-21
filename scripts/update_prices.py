@@ -20,6 +20,9 @@ import urllib.parse
 import urllib.request
 
 API_ROOT = "https://api.warframe.market/v2"
+STATISTICS_ROOT = "https://api.warframe.market/v1"
+VOLUME_CACHE = Path(__file__).resolve().parents[1] / ".cache" / "volume.json"
+VOLUME_MAX_AGE = 25 * 60 * 60
 DEFAULT_OUTPUT = Path(__file__).resolve().parents[1] / "site" / "data" / "prices.json"
 USER_AGENT = os.getenv("WFM_USER_AGENT", "ArcaneAtlas/2.1 (community arcane price dashboard)")
 ACQUISITION_URL = "https://raw.githubusercontent.com/WFCD/warframe-items/master/data/json/Arcanes.json"
@@ -42,8 +45,7 @@ class MarketClient:
         self.next_call = 0.0
         self.request_count = 0
 
-    def get(self, route: str):
-        url = self.api_base + route
+    def _request(self, url: str) -> dict:
         for attempt in range(4):
             wait = self.next_call - time.monotonic()
             if wait > 0:
@@ -56,16 +58,17 @@ class MarketClient:
             })
             try:
                 with urllib.request.urlopen(request, timeout=18) as response:
-                    payload = json.load(response)
+                    try:
+                        payload = json.load(response)
+                    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+                        raise MarketError(f"Invalid JSON from marketplace at {url}") from error
                 if not isinstance(payload, dict) or payload.get("error"):
-                    raise MarketError(f"Malformed or failed marketplace response at {route}")
-                if not isinstance(payload.get("data"), list):
-                    raise MarketError(f"No item/order list in marketplace response at {route}")
-                return payload["data"]
+                    raise MarketError(f"Invalid marketplace response at {url}")
+                return payload
             except urllib.error.HTTPError as error:
                 code = error.code
                 if code not in (429, 500, 502, 503, 504) or attempt == 3:
-                    raise MarketError(f"Warframe.market HTTP {code} at {route}", code) from error
+                    raise MarketError(f"Warframe.market HTTP {code} at {url}", code) from error
                 retry_after = error.headers.get("Retry-After", "")
                 try:
                     pause = min(45, max(0, float(retry_after)))
@@ -73,10 +76,26 @@ class MarketClient:
                     pause = 0
             except (urllib.error.URLError, TimeoutError) as error:
                 if attempt == 3:
-                    raise MarketError(f"Market connection failed at {route}: {error}") from error
+                    raise MarketError(f"Market connection failed at {url}: {error}") from error
                 pause = 0
             time.sleep(max(pause, 1.5 * 2**attempt))
-        raise MarketError(f"API retries exhausted at {route}")
+        raise MarketError(f"API retries exhausted at {url}")
+
+    def get(self, route: str):
+        payload = self._request(self.api_base + route)
+        if not isinstance(payload.get("data"), list):
+            raise MarketError(f"No item/order list in marketplace response at {route}")
+        return payload["data"]
+
+    def statistics(self, slug: str):
+        base = STATISTICS_ROOT if self.api_base == API_ROOT else self.api_base.removesuffix("/v2") + "/v1"
+        route = f"/items/{urllib.parse.quote(slug, safe='')}/statistics"
+        payload = self._request(base + route)
+        closed = (payload.get("payload") or {}).get("statistics_closed")
+        hours = closed.get("48hours") if isinstance(closed, dict) else None
+        if not isinstance(hours, list):
+            raise MarketError(f"No 48-hour closed-order statistics for {slug}")
+        return hours
 
 
 def filter_arcanes(items: list[dict]) -> list[dict]:
@@ -244,6 +263,91 @@ def summarize_orders(orders: list[dict], max_rank: int = 0) -> dict:
     return {"rank0": rank_quotes(0), "rankMax": rank_quotes(max_rank) if max_rank > 0 else None}
 
 
+def summarize_sales_volume(hours: list[dict], max_rank: int) -> dict | None:
+    if not hours:
+        return None
+    ranks = {}
+    for hour in hours:
+        if not isinstance(hour, dict):
+            continue
+        amount = hour.get("volume")
+        rank = hour.get("mod_rank")
+        if rank is None and max_rank == 0:
+            rank = 0
+        if (isinstance(amount, bool) or not isinstance(amount, (int, float)) or
+                not math.isfinite(amount) or amount < 0 or not float(amount).is_integer() or
+                isinstance(rank, bool) or not isinstance(rank, int) or rank < 0 or rank > max_rank):
+            continue
+        ranks[rank] = ranks.get(rank, 0) + int(amount)
+    if not ranks:
+        return None
+    return {
+        "allRanks": sum(ranks.values()),
+        "rank0": ranks.get(0, 0),
+        "rankMax": ranks.get(max_rank, 0) if max_rank > 0 else None,
+    }
+
+
+def load_volume_cache(path: Path, slugs: list[str], *, clock=time.time) -> dict | None:
+    try:
+        cached = json.loads(path.read_text(encoding="utf-8"))
+        fetched = cached["fetchedAt"]
+        values = cached["values"]
+        if (cached.get("schemaVersion") == 1 and isinstance(fetched, (int, float)) and
+                0 <= clock() - fetched < VOLUME_MAX_AGE and
+                dt.datetime.fromtimestamp(fetched, dt.timezone.utc).date() ==
+                dt.datetime.fromtimestamp(clock(), dt.timezone.utc).date() and
+                isinstance(values, dict) and
+                all(slug in values for slug in slugs)):
+            return cached
+    except (OSError, ValueError, TypeError, KeyError):
+        pass
+    return None
+
+
+def collect_sales_volumes(client: MarketClient, items: list[dict], cache_path: Path,
+                          *, clock=time.time, log=print) -> dict:
+    slugs = [item["slug"] for item in items]
+    cached = load_volume_cache(cache_path, slugs, clock=clock)
+    if cached:
+        log(f"Reusing 48h trade-volume snapshot from {dt.datetime.fromtimestamp(cached['fetchedAt'], dt.timezone.utc).isoformat()}.", flush=True)
+        return cached
+
+    values = {}
+    failures = 0
+    consecutive = 0
+    for item in items:
+        if consecutive >= 5:
+            values[item["slug"]] = None
+            continue
+        try:
+            hours = client.statistics(item["slug"])
+            values[item["slug"]] = summarize_sales_volume(hours, item["maxRank"])
+            consecutive = 0
+        except MarketError as error:
+            values[item["slug"]] = None
+            failures += 1
+            consecutive += 1
+            if error.status in (401, 403, 404):
+                consecutive = 5
+            if consecutive == 5:
+                log(f"Legacy volume statistics unavailable ({error}); remaining values will be blank.", flush=True)
+    saved = {"schemaVersion": 1, "fetchedAt": clock(), "values": values}
+    try:
+        write_snapshot(saved, cache_path)
+    except OSError as error:
+        log(f"Could not save volume cache: {error}", flush=True)
+    log(f"Volume statistics: {sum(v is not None for v in values.values())}/{len(items)} available; {failures} API errors.", flush=True)
+    return saved
+
+
+def attach_sales_volumes(snapshot: dict, cached: dict | None) -> None:
+    values = cached["values"] if cached else {}
+    snapshot["volumeUpdatedAt"] = int(cached["fetchedAt"] * 1000) if cached else None
+    for price in snapshot["prices"]:
+        price["sales48h"] = values.get(price["slug"])
+
+
 def collect(client: MarketClient, *, acquisition_index=None, clock=time.time, log=print) -> dict:
     started = int(clock() * 1000)
     items = filter_arcanes(client.get("/items"))
@@ -277,7 +381,7 @@ def collect(client: MarketClient, *, acquisition_index=None, clock=time.time, lo
     completed = int(clock() * 1000)
     return {
         "schemaVersion": 1,
-        "source": "Warframe.market public API v2",
+        "source": "Warframe.market API v2 orders; legacy v1 closed-order statistics",
         "market": {"platform": "pc", "crossplay": True},
         "generatedAt": dt.datetime.fromtimestamp(completed / 1000, tz=dt.timezone.utc).isoformat(),
         "startedAt": started, "completedAt": completed,
@@ -303,6 +407,8 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Publish one rate-limited arcane market snapshot")
     parser.add_argument("--api-base", default=os.getenv("WFM_API_BASE", API_ROOT))
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--volume-cache", type=Path, default=VOLUME_CACHE)
+    parser.add_argument("--no-volume", action="store_true")
     args = parser.parse_args(argv)
     try:
         client = MarketClient(args.api_base)
@@ -313,6 +419,8 @@ def main(argv=None) -> int:
             print(f"Acquisition metadata unavailable; Wiki links remain accessible: {error}", file=sys.stderr, flush=True)
             acquisition_index = {}
         snapshot = collect(client, acquisition_index=acquisition_index)
+        volume_data = None if args.no_volume else collect_sales_volumes(client, snapshot["items"], args.volume_cache)
+        attach_sales_volumes(snapshot, volume_data)
         write_snapshot(snapshot, args.output)
         print(f"Wrote {len(snapshot['prices'])} quotes to {args.output} ({client.request_count} API requests)", flush=True)
         return 0

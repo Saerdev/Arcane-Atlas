@@ -32,6 +32,18 @@ jobs:
       - name: Set up GitHub Pages
         uses: actions/configure-pages@v6
 
+      - name: Set volume cache date
+        id: volume-date
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore daily volume statistics
+        uses: actions/cache@v5
+        with:
+          path: .cache/volume.json
+          key: arcane-volume-${{ runner.os }}-${{ steps.volume-date.outputs.date }}
+          restore-keys: |
+            arcane-volume-${{ runner.os }}-
+
       - name: Generate fresh prices (Python standard library only)
         env:
           WFM_USER_AGENT: ArcaneAtlas/2.0 (+https://github.com/${{ github.repository }})

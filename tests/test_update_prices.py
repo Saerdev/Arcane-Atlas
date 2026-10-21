@@ -41,6 +41,23 @@ class FakeBlockedClient(FakeMarketClient):
         raise market.MarketError("Warframe.market HTTP 403", 403)
 
 
+class FakeStatsClient:
+    def __init__(self, fail=False):
+        self.calls = []
+        self.fail = fail
+
+    def statistics(self, slug):
+        self.calls.append(slug)
+        if self.fail:
+            raise market.MarketError("Stats unavailable", 403)
+        return [
+            {"mod_rank": 0, "volume": 4},
+            {"mod_rank": 0, "volume": 2},
+            {"mod_rank": 5, "volume": 7},
+            {"mod_rank": 3, "volume": 1},
+        ]
+
+
 class TestArcanePriceUpdater(unittest.TestCase):
     def test_catalog_filtered_and_safe_icon(self):
         result = market.filter_arcanes(FakeMarketClient().get("/items"))
@@ -149,6 +166,48 @@ class TestArcanePriceUpdater(unittest.TestCase):
             saved = json.loads(output.read_text())
             self.assertEqual(saved["items"][1]["name"], "Molt Augmented")
             self.assertEqual(saved["prices"][1]["quotes"]["rankMax"]["recent"]["ask"], 240)
+
+    def test_volume_is_closed_order_activity_not_listing_count(self):
+        hours = [{"mod_rank": 0, "volume": 4}, {"mod_rank": 5, "volume": 12},
+                 {"mod_rank": 3, "volume": 7}, {"mod_rank": 5, "volume": 2}]
+        self.assertEqual(market.summarize_sales_volume(hours, 5),
+                         {"allRanks": 25, "rank0": 4, "rankMax": 14})
+        self.assertIsNone(market.summarize_sales_volume([], 5))
+        self.assertIsNone(market.summarize_sales_volume([{"volume": -1, "mod_rank": 0}], 5))
+        self.assertEqual(market.summarize_sales_volume([{"volume": 0, "mod_rank": 0}], 5)["allRanks"], 0)
+        self.assertEqual(market.summarize_sales_volume([{"volume": 9, "mod_rank": 0}], 0)["rank0"], 9)
+
+    def test_daily_volume_cache_reused_without_new_market_calls(self):
+        day = 1792600000.0
+        items = market.filter_arcanes(FakeMarketClient().get("/items"))
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "volume.json"
+            client = FakeStatsClient()
+            cached = market.collect_sales_volumes(client, items, path, clock=lambda: day, log=lambda *a, **k: None)
+            self.assertEqual(client.calls, ["arcane_avenger", "molt_augmented"])
+            self.assertEqual(cached["values"]["arcane_avenger"], {"allRanks": 14, "rank0": 6, "rankMax": 7})
+            second_client = FakeStatsClient(fail=True)
+            same_day = market.collect_sales_volumes(second_client, items, path, clock=lambda: day + 3600, log=lambda *a, **k: None)
+            self.assertEqual(same_day, cached)
+            self.assertEqual(second_client.calls, [])
+            next_day = FakeStatsClient()
+            market.collect_sales_volumes(next_day, items, path, clock=lambda: day + 86400, log=lambda *a, **k: None)
+            self.assertEqual(len(next_day.calls), len(items))
+
+    def test_volume_failure_does_not_block_price_publication(self):
+        items = market.filter_arcanes(FakeMarketClient().get("/items"))
+        with tempfile.TemporaryDirectory() as directory:
+            cached = market.collect_sales_volumes(FakeStatsClient(fail=True), items,
+                                                  Path(directory) / "volume.json",
+                                                  clock=lambda: 1792600000.0,
+                                                  log=lambda *a, **k: None)
+            self.assertTrue(all(value is None for value in cached["values"].values()))
+            snapshot = market.collect(FakeMarketClient(), clock=lambda: 1792600000.0,
+                                      log=lambda *a, **k: None)
+            market.attach_sales_volumes(snapshot, cached)
+            self.assertEqual(snapshot["status"], "complete")
+            self.assertIsNone(snapshot["prices"][0]["sales48h"])
+            self.assertIsNotNone(snapshot["volumeUpdatedAt"])
 
     def test_broken_api_fails_instead_of_faking_prices(self):
         with self.assertRaises(market.MarketError):

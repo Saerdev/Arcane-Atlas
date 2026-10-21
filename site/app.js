@@ -15,7 +15,7 @@
   const state = {
     items: [], prices: new Map(), favorites: readFavorites(), view: 'compare',
     favoritesOnly: false, sort: 'name', direction: 'asc',
-    active: false, processed: 0, failed: 0, completedAt: 0,
+    active: false, processed: 0, failed: 0, completedAt: 0, volumeUpdatedAt: 0,
     renderPending: false, loadingCatalog: true, fetchSequence: 0, initialLoad: true, catalog: new Map(), tooltipTrigger: null, tooltipHideTimer: null,
   };
 
@@ -53,6 +53,14 @@
   }
   function countSide(side) { return side ? side.sellers + side.buyers : 0; }
   function volume(item) { return countSide(getSide(item, 'rank0')) + countSide(getSide(item, 'rankMax')); }
+  function salesVolume(item) {
+    const data = state.prices.get(item.slug)?.sales48h;
+    return data?.[state.view === 'compare' ? 'allRanks' : state.view] ?? null;
+  }
+  function showVolume(value) {
+    return value == null ? '<span class="amount empty">—</span>'
+      : `<span class="listing-count">${Number(value).toLocaleString('en-US')}</span>`;
+  }
   function sortVal(item) {
     switch (state.sort) {
       case 'name': return item.name.toLocaleLowerCase();
@@ -63,6 +71,7 @@
       case 'spread': return getSpread(getSide(item, 'rankMax'));
       case 'rank0.spread': return getSpread(getSide(item, 'rank0'));
       case 'volume': return volume(item);
+      case 'sales48h': return salesVolume(item);
       default: return item.name.toLocaleLowerCase();
     }
   }
@@ -100,14 +109,14 @@
         header('Arcane', 'name', 'Item / max rank'), header('Rank 0 · Sell', 'rank0.ask', 'Lowest asking price'),
         header('Rank 0 · Buy', 'rank0.bid', 'Highest buying offer'), header('Max · Sell', 'rankMax.ask', 'Lowest asking price'),
         header('Max · Buy', 'rankMax.bid', 'Highest buying offer'), header('Spread', 'spread', 'At max rank'),
-        header('Listings', 'volume', 'Both displayed ranks'), '<th scope="col" data-sort="none">Actions</th>',
+        header('Listings', 'volume', 'Both displayed ranks'), header('48h volume', 'sales48h', 'Reported closed orders · all ranks'), '<th scope="col" data-sort="none">Actions</th>',
       ];
     } else {
       const rank = state.view, scope = rank === 'rank0' ? 'Rank 0' : 'Max rank';
       columns = [header('Arcane', 'name', 'Item / max rank'), header(`${scope} · Sell`, `${rank}.ask`, 'Lowest asking price'),
         header(`${scope} · Buy`, `${rank}.bid`, 'Highest buying offer'),
         header('Spread', rank === 'rankMax' ? 'spread' : 'rank0.spread', 'Ask minus bid'),
-        header('Listings', 'volume', 'All displayed ranks'), '<th scope="col" data-sort="none">Actions</th>'];
+        header('Listings', 'volume', 'Selected rank'), header('48h volume', 'sales48h', 'Reported closed orders · selected rank'), '<th scope="col" data-sort="none">Actions</th>'];
     }
     els.head.innerHTML = `<tr>${columns.join('')}</tr>`;
   }
@@ -217,10 +226,10 @@
     const marketUrl = `https://warframe.market/items/${encodeURIComponent(item.slug)}`;
     const action = `<td class="action-cell"><div class="action-group"><button type="button" class="favorite-btn${fav ? ' active' : ''}" aria-label="${fav ? 'Remove from' : 'Add to'} watchlist: ${esc(item.name)}" aria-pressed="${fav}" data-favorite="${esc(item.slug)}">${fav ? '★' : '☆'}</button><a class="outbound-link" href="${marketUrl}" target="_blank" rel="noopener noreferrer" title="View on Warframe.market" aria-label="Open ${esc(item.name)} on Warframe.market">Market ↗</a><a class="wiki-link" href="${esc(wikiUrl(item))}" target="_blank" rel="noopener noreferrer" title="Acquisition details on Warframe Wiki" aria-label="Open ${esc(item.name)} on Warframe Wiki">Wiki ↗</a></div></td>`;
     if (state.view === 'compare') {
-      return `<tr><td>${itemCell(item)}</td><td>${showPrice(rank0?.ask, 'ask')}</td><td>${showPrice(rank0?.bid, 'bid')}</td><td>${showPrice(rankMax?.ask, 'ask')}</td><td>${showPrice(rankMax?.bid, 'bid')}</td><td>${spreadCell(rankMax)}</td><td><span class="listing-count">${volume(item)}</span></td>${action}</tr>`;
+      return `<tr><td>${itemCell(item)}</td><td>${showPrice(rank0?.ask, 'ask')}</td><td>${showPrice(rank0?.bid, 'bid')}</td><td>${showPrice(rankMax?.ask, 'ask')}</td><td>${showPrice(rankMax?.bid, 'bid')}</td><td>${spreadCell(rankMax)}</td><td><span class="listing-count">${volume(item)}</span></td><td>${showVolume(salesVolume(item))}</td>${action}</tr>`;
     }
     const side = state.view === 'rank0' ? rank0 : rankMax;
-    return `<tr><td>${itemCell(item)}</td><td>${showPrice(side?.ask, 'ask')}</td><td>${showPrice(side?.bid, 'bid')}</td><td>${spreadCell(side)}</td><td><span class="listing-count">${countSide(side)}</span></td>${action}</tr>`;
+    return `<tr><td>${itemCell(item)}</td><td>${showPrice(side?.ask, 'ask')}</td><td>${showPrice(side?.bid, 'bid')}</td><td>${spreadCell(side)}</td><td><span class="listing-count">${countSide(side)}</span></td><td>${showVolume(salesVolume(item))}</td>${action}</tr>`;
   }
 
   function render() {
@@ -228,7 +237,7 @@
     state.renderPending = false;
     renderHeader();
     const matches = visibleItems();
-    const colSpan = state.view === 'compare' ? 8 : 6;
+    const colSpan = state.view === 'compare' ? 9 : 7;
     if (matches.length === 0) {
       const message = state.loadingCatalog ? 'Loading the published arcane price snapshot…'
         : state.favoritesOnly && !state.favorites.size ? 'Your watchlist is empty. Star an arcane to save it here.'
@@ -306,6 +315,7 @@
       state.catalog = new Map(state.items.map((item) => [item.slug, item]));
       state.prices = new Map(snapshot.prices.map((p) => [p.slug, p]));
       state.completedAt = Number(snapshot.completedAt) || 0;
+      state.volumeUpdatedAt = Number(snapshot.volumeUpdatedAt) || 0;
       state.failed = Number(snapshot.failed) || 0;
       state.processed = state.prices.size;
       state.loadingCatalog = false;
@@ -344,11 +354,14 @@
   }
   function csvValue(value) { return `"${String(value ?? '').replaceAll('"', '""')}"`; }
   function exportCSV() {
-    const headers = ['Arcane', 'Max Rank', 'Rank 0 Sell (pt)', 'Rank 0 Buy (pt)', 'Rank 0 Median Ask (pt)', 'Max Rank Sell (pt)', 'Max Rank Buy (pt)', 'Max Rank Median Ask (pt)', 'Max Rank Spread (pt)', 'Listings (both ranks)', 'Market URL', 'Recorded Drop Sources', 'Wiki URL', 'Rank 0 Effect', 'Max Rank Effect'];
+    const headers = ['Arcane', 'Max Rank', 'Rank 0 Sell (pt)', 'Rank 0 Buy (pt)', 'Rank 0 Median Ask (pt)', 'Max Rank Sell (pt)', 'Max Rank Buy (pt)', 'Max Rank Median Ask (pt)', 'Max Rank Spread (pt)', 'Listings (both ranks)', '48h Volume (all ranks)', '48h Volume (rank 0)', '48h Volume (max rank)', 'Volume Updated At (UTC)', 'Market URL', 'Recorded Drop Sources', 'Wiki URL', 'Rank 0 Effect', 'Max Rank Effect'];
     const data = visibleItems().map((item) => {
       const r0 = getSide(item, 'rank0'), max = getSide(item, 'rankMax');
       return [item.name, item.maxRank, r0?.ask, r0?.bid, r0?.medianAsk, max?.ask, max?.bid, max?.medianAsk,
-        getSpread(max), volume(item), `https://warframe.market/items/${encodeURIComponent(item.slug)}`,
+        getSpread(max), volume(item), state.prices.get(item.slug)?.sales48h?.allRanks,
+        state.prices.get(item.slug)?.sales48h?.rank0, state.prices.get(item.slug)?.sales48h?.rankMax,
+        state.volumeUpdatedAt ? new Date(state.volumeUpdatedAt).toISOString() : '',
+        `https://warframe.market/items/${encodeURIComponent(item.slug)}`,
         (item.acquisitionSources || []).map((source) => source.location).join('; '), wikiUrl(item),
         item.effects?.rank0, item.effects?.rankMax].map(csvValue).join(',');
     });
