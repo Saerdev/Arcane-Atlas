@@ -48,3 +48,13 @@ footer a{color:#b1dbd0}
 @media(max-width:780px){.acquisition-tooltip{max-height:min(450px,calc(100vh - 24px))}}
 
 .hero-meta #stat-total{font-family:var(--font-head);color:var(--teal);font-size:17px;font-weight:700;vertical-align:-1px}
+
+/* Inline Warframe damage/status icons supplied by the Wiki. */
+.effect-status-icon {
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
+  margin: 0 0.12em;
+  object-fit: contain;
+  vertical-align: -0.18em;
+}

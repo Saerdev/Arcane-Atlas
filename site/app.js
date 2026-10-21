@@ -35,6 +35,52 @@
   function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
   }
+  // Render game status tokens as images bundled with the static site.
+  const EFFECT_ICON_BASE = './assets/status/';
+  const EFFECT_STATUS_ICONS = Object.freeze({
+    IMPACT:      ['ImpactSymbol.png', 'Impact'],
+    PUNCTURE:    ['PunctureSymbol.png', 'Puncture'],
+    SLASH:       ['SlashSymbol.png', 'Slash'],
+    FIRE:        ['HeatSymbol.png', 'Heat'],
+    HEAT:        ['HeatSymbol.png', 'Heat'],
+    FREEZE:      ['ColdSymbol.png', 'Cold'],
+    COLD:        ['ColdSymbol.png', 'Cold'],
+    ELECTRICITY: ['ElectricitySymbol.png', 'Electricity'],
+    POISON:      ['ToxinSymbol.png', 'Toxin'],
+    TOXIN:       ['ToxinSymbol.png', 'Toxin'],
+    EXPLOSION:   ['BlastSymbol.png', 'Blast'],
+    BLAST:       ['BlastSymbol.png', 'Blast'],
+    RADIATION:   ['RadiationSymbol.png', 'Radiation'],
+    GAS:         ['GasSymbol.png', 'Gas'],
+    MAGNETIC:    ['MagneticSymbol.png', 'Magnetic'],
+    VIRAL:       ['ViralSymbol.png', 'Viral'],
+    CORROSIVE:   ['CorrosiveSymbol.png', 'Corrosive'],
+    RADIANT:     ['VoidSymbol.png', 'Void'],
+    VOID:        ['VoidSymbol.png', 'Void'],
+  });
+
+  function renderEffectDescription(value) {
+    const text = String(value ?? '')
+      .replace(/\\r\\n|\\n|\\r/g, '\n')
+      .replace(/\r\n?/g, '\n');
+
+    return text.split(/(<(?:DT|STAT)_[A-Z0-9_]+>)/g).map((part) => {
+      if (part.startsWith('<') && part.endsWith('>')) {
+        const code = part.slice(1, -1)
+          .replace(/^(?:DT|STAT)_/, '')
+          .replace(/_NO_ADV$/, '')
+          .replace(/_(?:TINT_)?COLOR$/, '');
+        const icon = EFFECT_STATUS_ICONS[code];
+        if (icon) {
+          const [filename, label] = icon;
+          return `<img class="effect-status-icon" src="${EFFECT_ICON_BASE}${encodeURIComponent(filename)}" alt="${label}" title="${label}" width="16" height="16" decoding="async" style="display:inline-block;width:1.15em;height:1.15em;object-fit:contain;vertical-align:-0.18em;margin:0 0.1em">`;
+        }
+      }
+      // Escape all other description text rather than treating it as HTML.
+      return esc(part);
+    }).join('');
+  }
+
   function n(value) {
     return value == null || !Number.isFinite(Number(value)) ? null : Number(value);
   }
@@ -133,7 +179,7 @@
       : (Number.isInteger(effect.maxRank) ? effect.maxRank : item.maxRank);
     const rankLabel = shownRank > 0 ? `RANK ${shownRank}` : 'RANK 0';
     const description = effectText
-      ? `<p class="effect-description">${esc(effectText)}</p>`
+      ? `<p class="effect-description">${renderEffectDescription(effectText)}</p>`
       : '<p class="effect-unavailable">Effect description not available in this snapshot. Check the Wiki for details.</p>';
     const sources = Array.isArray(item.acquisitionSources) ? item.acquisitionSources : [];
     const entries = sources.slice(0, 4).map((source) => {
