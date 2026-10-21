@@ -8,8 +8,7 @@
     head: $('table-head'), count: $('result-count'), bottomCount: $('bottom-count'),
     progressArea: $('progress-area'), progressLabel: $('progress-label'), progressCount: $('progress-count'),
     progressBar: $('progress-bar'), error: $('error-banner'), heroStatus: $('hero-status'),
-    statTotal: $('stat-total'), statLoaded: $('stat-loaded'), statLoadedDesc: $('stat-load-desc'),
-    statPriced: $('stat-priced'), statUpdated: $('stat-updated'), statUpdatedDesc: $('stat-updated-desc'),
+    statTotal: $('stat-total'),
     tooltip: $('arcane-tooltip'),
   };
 
@@ -54,10 +53,6 @@
   }
   function countSide(side) { return side ? side.sellers + side.buyers : 0; }
   function volume(item) { return countSide(getSide(item, 'rank0')) + countSide(getSide(item, 'rankMax')); }
-  function readableDate(time) {
-    return time ? new Date(time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '—';
-  }
-
   function sortVal(item) {
     switch (state.sort) {
       case 'name': return item.name.toLocaleLowerCase();
@@ -245,13 +240,6 @@
     els.count.textContent = `${matches.length.toLocaleString()} arcane${matches.length === 1 ? '' : 's'} shown · ${state.items.length.toLocaleString()} tracked`;
     els.bottomCount.textContent = `Showing ${matches.length.toLocaleString()} of ${state.items.length.toLocaleString()} arcanes`;
     els.statTotal.textContent = state.items.length ? state.items.length.toLocaleString() : '—';
-    const fetched = [...state.prices.values()].filter((p) => p.quotes).length;
-    els.statLoaded.textContent = state.items.length ? fetched.toLocaleString() : '—';
-    els.statLoadedDesc.textContent = state.items.length ? `of ${state.items.length} quotes in snapshot` : 'Waiting for data';
-    const priced = state.items.filter((item) => [getSide(item, 'rank0'), getSide(item, 'rankMax')].some((side) => side?.sellers > 0)).length;
-    els.statPriced.textContent = state.items.length ? priced.toLocaleString() : '—';
-    els.statUpdated.textContent = readableDate(state.completedAt);
-    els.statUpdatedDesc.textContent = state.completedAt ? `Completed ${new Date(state.completedAt).toLocaleDateString()} · local time` : 'Awaiting first published scan';
     const ready = !!state.items.length;
     els.export.disabled = !ready;
     els.refresh.disabled = state.active;
