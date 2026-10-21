@@ -1,6 +1,6 @@
 # Arcane Atlas
 
-**Website:** [Arcane Atlas]https://saerdev.github.io/Arcane-Atlas/
+**Website:** [Arcane Atlas](https://saerdev.github.io/Arcane-Atlas/)
 
 Arcane Atlas is a Warframe arcane price tracker. It puts Warframe.market buy and sell listings in one place so you can compare prices without opening a bunch of tabs.
 
