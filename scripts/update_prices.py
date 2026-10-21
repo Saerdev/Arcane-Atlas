@@ -19,6 +19,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from vendor_offers import vendor_sources
+
 API_ROOT = "https://api.warframe.market/v2"
 STATISTICS_ROOT = "https://api.warframe.market/v1"
 VOLUME_CACHE = Path(__file__).resolve().parents[1] / ".cache" / "volume.json"
@@ -185,6 +187,10 @@ def build_acquisition_index(records: list[dict]) -> dict[str, dict]:
             if not isinstance(location, str) or not location.strip():
                 continue
             location = location.strip()[:180]
+            # WFCD includes Plague Star vendor purchases as 100% "drops".
+            # Those are limited-time shop offers, not combat rewards.
+            if location.casefold().startswith("operational supply"):
+                continue
             chance = drop.get("chance")
             if isinstance(chance, bool) or not isinstance(chance, (int, float)) or not math.isfinite(chance) or not 0 <= chance <= 100:
                 chance = None
@@ -219,7 +225,8 @@ def attach_acquisition(items: list[dict], index: dict[str, dict]) -> None:
         details = index.get(normalized_name(item["name"]))
         item["wikiUrl"] = details["wikiUrl"] if details else wiki_link(item["name"])
         item["acquisitionSources"] = details["sources"] if details else []
-        item["acquisitionStatus"] = "documented" if details else "unavailable"
+        item["vendorSources"] = vendor_sources(item["name"])
+        item["acquisitionStatus"] = "documented" if details or item["vendorSources"] else "unavailable"
         item["effects"] = details["effects"] if details else {"rank0": None, "rankMax": None, "maxRank": None}
 
 

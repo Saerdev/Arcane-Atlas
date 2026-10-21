@@ -1,0 +1,8 @@
+/* Vendor purchase details in arcane acquisition tooltips. */
+.vendor-heading{margin-top:10px;color:#9bb8b3;font-size:9px;letter-spacing:1px;font-weight:800}
+.vendor-list{list-style:none;padding:0;margin:7px 0 9px;display:flex;flex-direction:column;gap:8px}
+.vendor-offer{font-size:11px;color:#dcebea;line-height:1.55}
+.vendor-offer strong{color:#f2fcfa}
+.vendor-cost{display:inline-flex;align-items:center;gap:3px;white-space:nowrap;color:#91f0d5;font-weight:700;font-variant-numeric:tabular-nums}
+.vendor-standing-icon{display:inline-block;width:16px;height:16px;object-fit:contain;vertical-align:-3px}
+.vendor-event{color:#e0c797}

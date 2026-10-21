@@ -1,0 +1,500 @@
+{
+  "offers": {
+    "arcane escapist": [
+      {
+        "cost": 5,
+        "currency": "Pix Chips",
+        "faction": "The Hex",
+        "icon": "pix-chip.png",
+        "location": "Höllvania Central Mall",
+        "rank": 5,
+        "rankName": "Pizza Party",
+        "vendor": "Kaya Velasco",
+        "weeklyLimit": 1
+      }
+    ],
+    "arcane hot shot": [
+      {
+        "cost": 5,
+        "currency": "Pix Chips",
+        "faction": "The Hex",
+        "icon": "pix-chip.png",
+        "location": "Höllvania Central Mall",
+        "rank": 5,
+        "rankName": "Pizza Party",
+        "vendor": "Kaya Velasco",
+        "weeklyLimit": 1
+      }
+    ],
+    "arcane universal fallout": [
+      {
+        "cost": 5,
+        "currency": "Pix Chips",
+        "faction": "The Hex",
+        "icon": "pix-chip.png",
+        "location": "Höllvania Central Mall",
+        "rank": 5,
+        "rankName": "Pizza Party",
+        "vendor": "Kaya Velasco",
+        "weeklyLimit": 1
+      }
+    ],
+    "exodia brave": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Ostrons",
+        "icon": "ostron.png",
+        "rank": 5,
+        "rankName": "Kin",
+        "vendor": "Hok"
+      }
+    ],
+    "exodia contagion": [
+      {
+        "cost": 5000,
+        "currency": "standing",
+        "event": "Operation: Plague Star",
+        "extraCost": "1,500 Credits",
+        "faction": "Operational Supply",
+        "rank": 2,
+        "rankName": "Defender",
+        "vendor": "Nakak"
+      },
+      {
+        "cost": 50,
+        "currency": "Mother Tokens",
+        "event": "Nights of Naberus",
+        "faction": "Entrati",
+        "vendor": "Daughter"
+      }
+    ],
+    "exodia epidemic": [
+      {
+        "cost": 5000,
+        "currency": "standing",
+        "event": "Operation: Plague Star",
+        "extraCost": "1,500 Credits",
+        "faction": "Operational Supply",
+        "rank": 2,
+        "rankName": "Defender",
+        "vendor": "Nakak"
+      },
+      {
+        "cost": 50,
+        "currency": "Mother Tokens",
+        "event": "Nights of Naberus",
+        "faction": "Entrati",
+        "vendor": "Daughter"
+      }
+    ],
+    "exodia force": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Ostrons",
+        "icon": "ostron.png",
+        "rank": 5,
+        "rankName": "Kin",
+        "vendor": "Hok"
+      }
+    ],
+    "exodia hunt": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Ostrons",
+        "icon": "ostron.png",
+        "rank": 5,
+        "rankName": "Kin",
+        "vendor": "Hok"
+      }
+    ],
+    "exodia might": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Ostrons",
+        "icon": "ostron.png",
+        "rank": 5,
+        "rankName": "Kin",
+        "vendor": "Hok"
+      }
+    ],
+    "exodia triumph": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Ostrons",
+        "icon": "ostron.png",
+        "rank": 5,
+        "rankName": "Kin",
+        "vendor": "Hok"
+      }
+    ],
+    "exodia valor": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Ostrons",
+        "icon": "ostron.png",
+        "rank": 5,
+        "rankName": "Kin",
+        "vendor": "Hok"
+      }
+    ],
+    "magus accelerant": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Vox Solaris",
+        "icon": "vox.png",
+        "rank": 5,
+        "rankName": "Shadow",
+        "vendor": "Little Duck"
+      }
+    ],
+    "magus anomaly": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Vox Solaris",
+        "icon": "vox.png",
+        "rank": 4,
+        "rankName": "Instrument",
+        "vendor": "Little Duck"
+      }
+    ],
+    "magus cadence": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "The Quills",
+        "icon": "quills.png",
+        "rank": 4,
+        "rankName": "Instrument",
+        "vendor": "Onkko"
+      }
+    ],
+    "magus cloud": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "The Quills",
+        "icon": "quills.png",
+        "rank": 4,
+        "rankName": "Instrument",
+        "vendor": "Onkko"
+      }
+    ],
+    "magus destruct": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Vox Solaris",
+        "icon": "vox.png",
+        "rank": 4,
+        "rankName": "Instrument",
+        "vendor": "Little Duck"
+      }
+    ],
+    "magus drive": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Vox Solaris",
+        "icon": "vox.png",
+        "rank": 4,
+        "rankName": "Instrument",
+        "vendor": "Little Duck"
+      }
+    ],
+    "magus elevate": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "The Quills",
+        "icon": "quills.png",
+        "rank": 5,
+        "rankName": "Architect",
+        "vendor": "Onkko"
+      }
+    ],
+    "magus firewall": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Vox Solaris",
+        "icon": "vox.png",
+        "rank": 4,
+        "rankName": "Instrument",
+        "vendor": "Little Duck"
+      }
+    ],
+    "magus glitch": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Vox Solaris",
+        "icon": "vox.png",
+        "rank": 5,
+        "rankName": "Shadow",
+        "vendor": "Little Duck"
+      }
+    ],
+    "magus husk": [
+      {
+        "cost": 5000,
+        "currency": "standing",
+        "faction": "The Quills",
+        "icon": "quills.png",
+        "rank": 2,
+        "rankName": "Observer",
+        "vendor": "Onkko"
+      }
+    ],
+    "magus lockdown": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Vox Solaris",
+        "icon": "vox.png",
+        "rank": 4,
+        "rankName": "Instrument",
+        "vendor": "Little Duck"
+      }
+    ],
+    "magus melt": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Vox Solaris",
+        "icon": "vox.png",
+        "rank": 5,
+        "rankName": "Shadow",
+        "vendor": "Little Duck"
+      }
+    ],
+    "magus nourish": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "The Quills",
+        "icon": "quills.png",
+        "rank": 5,
+        "rankName": "Architect",
+        "vendor": "Onkko"
+      }
+    ],
+    "magus overload": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Vox Solaris",
+        "icon": "vox.png",
+        "rank": 5,
+        "rankName": "Shadow",
+        "vendor": "Little Duck"
+      }
+    ],
+    "magus repair": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Vox Solaris",
+        "icon": "vox.png",
+        "rank": 5,
+        "rankName": "Shadow",
+        "vendor": "Little Duck"
+      }
+    ],
+    "magus replenish": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "The Quills",
+        "icon": "quills.png",
+        "rank": 4,
+        "rankName": "Instrument",
+        "vendor": "Onkko"
+      }
+    ],
+    "magus revert": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Vox Solaris",
+        "icon": "vox.png",
+        "rank": 5,
+        "rankName": "Shadow",
+        "vendor": "Little Duck"
+      }
+    ],
+    "magus vigor": [
+      {
+        "cost": 2500,
+        "currency": "standing",
+        "faction": "The Quills",
+        "icon": "quills.png",
+        "rank": 1,
+        "rankName": "Mote",
+        "vendor": "Onkko"
+      }
+    ],
+    "pax bolt": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Solaris United",
+        "icon": "solaris.png",
+        "rank": 5,
+        "rankName": "Old Mate",
+        "vendor": "Rude Zuud"
+      }
+    ],
+    "pax charge": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Solaris United",
+        "icon": "solaris.png",
+        "rank": 5,
+        "rankName": "Old Mate",
+        "vendor": "Rude Zuud"
+      }
+    ],
+    "pax seeker": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Solaris United",
+        "icon": "solaris.png",
+        "rank": 5,
+        "rankName": "Old Mate",
+        "vendor": "Rude Zuud"
+      }
+    ],
+    "pax soar": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "Solaris United",
+        "icon": "solaris.png",
+        "rank": 5,
+        "rankName": "Old Mate",
+        "vendor": "Rude Zuud"
+      }
+    ],
+    "virtuos forge": [
+      {
+        "cost": 7500,
+        "currency": "standing",
+        "faction": "Vox Solaris",
+        "icon": "vox.png",
+        "rank": 3,
+        "rankName": "Hand",
+        "vendor": "Little Duck"
+      }
+    ],
+    "virtuos fury": [
+      {
+        "cost": 7500,
+        "currency": "standing",
+        "faction": "The Quills",
+        "icon": "quills.png",
+        "rank": 3,
+        "rankName": "Adherent",
+        "vendor": "Onkko"
+      }
+    ],
+    "virtuos ghost": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "The Quills",
+        "icon": "quills.png",
+        "rank": 5,
+        "rankName": "Architect",
+        "vendor": "Onkko"
+      }
+    ],
+    "virtuos null": [
+      {
+        "cost": 2500,
+        "currency": "standing",
+        "faction": "The Quills",
+        "icon": "quills.png",
+        "rank": 1,
+        "rankName": "Mote",
+        "vendor": "Onkko"
+      }
+    ],
+    "virtuos shadow": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "The Quills",
+        "icon": "quills.png",
+        "rank": 5,
+        "rankName": "Architect",
+        "vendor": "Onkko"
+      }
+    ],
+    "virtuos spike": [
+      {
+        "cost": 5000,
+        "currency": "standing",
+        "faction": "Vox Solaris",
+        "icon": "vox.png",
+        "rank": 2,
+        "rankName": "Agent",
+        "vendor": "Little Duck"
+      }
+    ],
+    "virtuos strike": [
+      {
+        "cost": 10000,
+        "currency": "standing",
+        "faction": "The Quills",
+        "icon": "quills.png",
+        "rank": 4,
+        "rankName": "Instrument",
+        "vendor": "Onkko"
+      }
+    ],
+    "virtuos surge": [
+      {
+        "cost": 5000,
+        "currency": "standing",
+        "faction": "Vox Solaris",
+        "icon": "vox.png",
+        "rank": 2,
+        "rankName": "Agent",
+        "vendor": "Little Duck"
+      }
+    ],
+    "virtuos tempo": [
+      {
+        "cost": 5000,
+        "currency": "standing",
+        "faction": "The Quills",
+        "icon": "quills.png",
+        "rank": 2,
+        "rankName": "Observer",
+        "vendor": "Onkko"
+      }
+    ],
+    "virtuos trojan": [
+      {
+        "cost": 7500,
+        "currency": "standing",
+        "faction": "Vox Solaris",
+        "icon": "vox.png",
+        "rank": 3,
+        "rankName": "Hand",
+        "vendor": "Little Duck"
+      }
+    ]
+  },
+  "schemaVersion": 1
+}

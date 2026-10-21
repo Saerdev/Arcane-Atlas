@@ -19,6 +19,33 @@
     renderPending: false, loadingCatalog: true, fetchSequence: 0, initialLoad: true, catalog: new Map(), tooltipTrigger: null, tooltipHideTimer: null,
   };
 
+  // Vendor purchases are stored separately from price snapshots, so local preview
+  // data and older published snapshots still show up-to-date shop sources.
+  const vendorCatalogPromise = fetch('./data/vendor-offers.json', { cache: 'no-cache' })
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (data?.schemaVersion !== 1 || !data.offers ||
+          typeof data.offers !== 'object' || Array.isArray(data.offers)) {
+        throw new Error('Unsupported vendor catalog format');
+      }
+      return data.offers;
+    })
+    .catch((error) => {
+      console.warn('Vendor catalog unavailable; using purchases from the price snapshot:', error);
+      return null;
+    });
+
+  function attachLocalVendorSources(items, offers) {
+    if (!offers) return items;
+    return items.map((item) => {
+      const localOffers = offers[item.name.toLocaleLowerCase('en-US')];
+      // The bundled catalog is authoritative when present. Retain snapshot data
+      // as a fallback when it is missing or cannot be loaded.
+      return Array.isArray(localOffers) ? { ...item, vendorSources: localOffers } : item;
+    });
+  }
+
   function readSourcePreference() {
     try { return localStorage.getItem('arcane-atlas-source-tooltips') !== 'off'; }
     catch { return true; }
@@ -188,12 +215,33 @@
         ? `<span class="acquisition-chance">${esc(source.chance.toLocaleString('en-US', { maximumFractionDigits: 3 }))}%</span>` : '';
       return `<li><span>${name}</span>${chance}</li>`;
     }).join('');
-    const summary = sources.length ? `<ul class="acquisition-list">${entries}</ul>`
-      : `<p class="acquisition-empty">${item.acquisitionStatus === 'documented' ? 'No drop locations are listed for this arcane.' : 'Drop location data is not available in this snapshot.'}</p>`;
-    const more = sources.length > 4 ? `<span>${sources.length - 4} more recorded source${sources.length - 4 === 1 ? '' : 's'} · Wiki for details</span>` : '<span>Vendors and special-event methods may differ</span>';
+    const vendors = Array.isArray(item.vendorSources) ? item.vendorSources : [];
+    const standingIcons = new Set(['ostron.png', 'quills.png', 'solaris.png', 'vox.png', 'pix-chip.png']);
+    const vendorEntries = vendors.slice(0, 3).map((offer) => {
+      const iconFolder = offer.icon === 'pix-chip.png' ? 'currencies' : 'factions';
+      const icon = standingIcons.has(offer.icon)
+        ? `<img class="vendor-standing-icon" src="./assets/${iconFolder}/${offer.icon}" alt="" width="16" height="16" loading="lazy">` : '';
+      const amount = typeof offer.cost === 'number' ? offer.cost.toLocaleString('en-US') : 'Unknown cost';
+      const cost = `<span class="vendor-cost">${icon}${esc(amount)} ${esc(offer.currency || 'standing')}</span>`;
+      const extra = offer.extraCost ? ` + ${esc(offer.extraCost)}` : '';
+      const rank = offer.rankName ? `, requires rank ${esc(offer.rank)} (${esc(offer.rankName)}) with ${esc(offer.faction)}` : '';
+      const event = offer.event ? ` <span class="vendor-event">Only during ${esc(offer.event)}.</span>` : '';
+      const weekly = Number.isInteger(offer.weeklyLimit) && offer.weeklyLimit > 0
+        ? ` <span class="vendor-event">Limit ${offer.weeklyLimit} per week.</span>` : '';
+      const location = offer.location ? ` Available at ${esc(offer.location)}.` : '';
+      return `<li class="vendor-offer"><span>Sold by <strong>${esc(offer.vendor)}</strong> for ${cost}${extra}${rank}.${location}${weekly}${event}</span></li>`;
+    }).join('');
+    const vendorSection = vendorEntries
+      ? `<div class="vendor-heading">VENDOR PURCHASES</div><ul class="vendor-list">${vendorEntries}</ul>` : '';
+    const dropSection = sources.length
+      ? `<div class="vendor-heading">RECORDED DROPS</div><ul class="acquisition-list">${entries}</ul>`
+      : !vendors.length
+        ? `<p class="acquisition-empty">${item.acquisitionStatus === 'documented' ? 'No direct drop or vendor source is recorded. Check the Wiki for other methods.' : 'Acquisition data is not available in this snapshot.'}</p>`
+        : '';
+    const more = sources.length > 4 ? `<span>${sources.length - 4} more recorded drops · Wiki for details</span>` : '<span>Wiki for other acquisition methods</span>';
     return `<div class="acquisition-heading"><span>ARCANE DETAILS</span><strong>${esc(item.name)}</strong></div>
       <section class="effect-section"><div class="tooltip-section-heading">EFFECT <span class="effect-rank">${rankLabel}</span></div>${description}</section>
-      <section class="sources-section"><div class="tooltip-section-heading">ACQUISITION · RECORDED DROPS</div>${summary}</section>
+      <section class="sources-section"><div class="tooltip-section-heading">ACQUISITION</div>${vendorSection}${dropSection}</section>
       <div class="acquisition-footer">${more}<span>Wiki ↗ in actions</span></div>`;
   }
   function cancelTooltipHide() {
@@ -353,7 +401,9 @@
         notice('The site is published, but the first market scan has not completed yet. The site owner can start “Update prices & deploy” in GitHub Actions.');
         return;
       }
-      state.items = snapshot.items;
+      const localVendorOffers = await vendorCatalogPromise;
+      if (request !== state.fetchSequence) return;
+      state.items = attachLocalVendorSources(snapshot.items, localVendorOffers);
       state.catalog = new Map(state.items.map((item) => [item.slug, item]));
       state.prices = new Map(snapshot.prices.map((p) => [p.slug, p]));
       state.completedAt = Number(snapshot.completedAt) || 0;

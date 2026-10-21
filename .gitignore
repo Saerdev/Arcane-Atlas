@@ -1,3 +1,7 @@
 preview.bat
 preview.py
 site/data/prices (test).json
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.cache/
