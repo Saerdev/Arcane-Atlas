@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080e17">
+  <meta name="description" content="Compare Warframe arcane sell listings and buy offers for unranked and max-rank arcanes.">
+  <title>Arcane Atlas — Warframe Market Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Arcane Atlas home">
+        <span class="brand-mark" aria-hidden="true"><span class="brand-glyph">✧</span></span>
+        <span class="brand-type">ARCANE <strong>ATLAS</strong><small>WARFRAME MARKET INTELLIGENCE</small></span>
+      </a>
+      <div class="topbar-right">
+        <span class="quiet-label topbar-source"><span class="little-led"></span> Powered by Warframe.market</span>
+        <a href="https://warframe.market" class="topbar-link" target="_blank" rel="noopener noreferrer">Visit marketplace <span aria-hidden="true">↗</span></a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-text">
+          <div class="eyebrow"><span class="eyebrow-line"></span> YOUR TENNO TRADING TERMINAL <span class="eyebrow-dot">◈</span> 01 / MARKET</div>
+          <h1>Know the price.<br><span>Own the trade.</span></h1>
+          <p>Every tradable arcane. Both ends of the market. One clean view to spot the best prices — without opening a hundred tabs.</p>
+          <div class="hero-meta"><span class="hero-dot"></span><span id="hero-status">Loading market snapshot</span><span class="meta-divider"></span><span>Values in <strong>Platinum</strong> <span class="plat-symbol">✦</span></span></div>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit orbit-three"></div>
+          <div class="core-glow"></div><div class="core-shape"><i></i><i></i><i></i><i></i><span class="core-center"></span></div>
+          <span class="orbital-label orbital-label-one">PRICE SIGNAL // 01</span>
+          <span class="orbital-label orbital-label-two">PUBLISHED SNAPSHOT_</span>
+          <span class="orbital-tick tick-one"></span><span class="orbital-tick tick-two"></span>
+        </div>
+      </section>
+
+      <section class="metrics" aria-label="Market summary">
+        <article class="metric"><div class="metric-label">ARCANES TRACKED <span>01</span></div><div class="metric-number" id="stat-total">—</div><div class="metric-bottom">PC / crossplay market</div></article>
+        <article class="metric"><div class="metric-label">QUOTES SCANNED <span>02</span></div><div class="metric-number" id="stat-loaded">—</div><div class="metric-bottom"><span class="metric-little-dot"></span> <span id="stat-load-desc">Waiting for data</span></div></article>
+        <article class="metric"><div class="metric-label">WITH SELL LISTINGS <span>03</span></div><div class="metric-number" id="stat-priced">—</div><div class="metric-bottom">For your selected listing scope</div></article>
+        <article class="metric"><div class="metric-label">LAST MARKET SCAN <span>04</span></div><div class="metric-number date-number" id="stat-updated">—</div><div class="metric-bottom" id="stat-updated-desc">Awaiting first published scan</div></article>
+      </section>
+
+      <section class="market-panel" aria-labelledby="market-heading">
+        <div class="section-head">
+          <div><div class="section-kicker">01 / THE MARKET INDEX</div><h2 id="market-heading">Arcane price board <span class="section-cross">✳</span></h2><p>Compare rank 0 and maximum-rank offers from the last published scan. No login required.</p></div>
+          <button class="refresh-button" type="button" id="refresh-button"><span class="refresh-icon" aria-hidden="true">↻</span> Check for updates</button>
+        </div>
+
+        <div class="progress-area" id="progress-area" role="status" aria-live="polite">
+          <div class="progress-top"><span id="progress-label">Loading the latest snapshot…</span><span id="progress-count">Downloading</span></div>
+          <div class="progress-track"><div id="progress-bar" class="progress-fill"></div></div>
+        </div>
+        <div class="error-banner" id="error-banner" hidden></div>
+
+        <div class="toolbar">
+          <label class="search-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="7.3"></circle><path d="m16.3 16.3 5 5"></path></svg><input id="search" autocomplete="off" type="search" placeholder="Search arcanes…" aria-label="Search arcanes"><span class="search-hint">/</span></label>
+          <div class="market-scope" title="This edition tracks the PC/crossplay market only"><span class="field-label">MARKET</span><strong>PC · Crossplay</strong></div>
+          <label class="select-wrap sort-wrap"><span class="field-label">SORT BY</span><select id="sort" aria-label="Sort by"><option value="name">Name A–Z</option><option value="rankMax.ask">Max rank · Lowest sell</option><option value="rankMax.bid">Max rank · Highest buy</option><option value="rank0.ask">Rank 0 · Lowest sell</option><option value="rank0.bid">Rank 0 · Highest buy</option><option value="spread">Max rank · Spread</option><option value="rank0.spread">Rank 0 · Spread</option><option value="volume">Most listings</option></select></label>
+          <button id="sort-direction" class="icon-button sort-direction" aria-label="Toggle sort direction" title="Toggle sort direction" type="button">↓↑</button>
+        </div>
+        <div class="toolbar-secondary">
+          <div class="view-switch" role="group" aria-label="Rank display"><button type="button" class="active" data-view="compare" aria-pressed="true">Compare both</button><button type="button" data-view="rank0" aria-pressed="false">Rank 0</button><button type="button" data-view="rankMax" aria-pressed="false">Max rank</button></div>
+          <label class="switch-control"><input id="online-only" type="checkbox" checked><span class="switch-track"></span><span>Online at last scan</span></label>
+          <label class="switch-control"><input id="priced-only" type="checkbox"><span class="switch-track"></span><span>Only with prices</span></label>
+          <button class="favorites-filter" id="favorites-only" type="button" aria-pressed="false"><span>☆</span> Watchlist</button>
+          <div class="toolbar-spacer"></div>
+          <button class="text-button" id="export-button" type="button"><span>⇩</span> Export CSV</button>
+        </div>
+
+        <div class="table-status"><span id="result-count">Waiting for catalog…</span><div class="status-key"><span class="key-dot key-green"></span>Sell = lowest asking price <span class="key-dot key-amber"></span>Buy = highest offer</div></div>
+        <div class="table-scroller"><table class="price-table"><thead id="table-head"></thead><tbody id="table-body"><tr><td class="empty-state">Loading the price snapshot…</td></tr></tbody></table></div>
+        <div class="table-footer"><span id="bottom-count">—</span><div><span class="tiny-bullet">◈</span> Prices reflect listings, not completed transactions. <a href="https://warframe.market" target="_blank" rel="noopener noreferrer">Source ↗</a></div></div>
+      </section>
+
+      <section class="footnotes"><div><span class="footnote-icon">ⓘ</span><div><strong>How to read the board</strong><p><b>Sell</b> is the cheapest current listing from a seller; <b>Buy</b> is the highest offer from a buyer. The <b>spread</b> is the sell price minus the buy price, when both exist. Values are per unit when listings use bulk trades.</p></div></div><div><span class="footnote-icon">⌁</span><div><strong>About freshness</strong><p>The public site reads a snapshot updated by a scheduled process approximately every 30 minutes, subject to API availability and hosting delays. “Online” means online or in-game at the time of that scan, not necessarily right now. The update button checks for a newer published snapshot; it does not trigger a market scan.</p></div></div></section>
+    </main>
+    <footer><span><span class="footer-mark">✧</span> ARCANE ATLAS <span class="footer-sep">/</span> A community-made trading dashboard</span><span>Not affiliated with Digital Extremes or Warframe.market · Warframe is a trademark of Digital Extremes.</span></footer>
+  </div>
+</body>
+</html>
