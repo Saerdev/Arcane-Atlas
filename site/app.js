@@ -17,7 +17,7 @@
     items: [], prices: new Map(), favorites: readFavorites(), view: 'compare',
     favoritesOnly: false, sort: 'name', direction: 'asc',
     active: false, processed: 0, failed: 0, completedAt: 0,
-    renderPending: false, loadingCatalog: true, fetchSequence: 0, initialLoad: true, catalog: new Map(), tooltipTrigger: null,
+    renderPending: false, loadingCatalog: true, fetchSequence: 0, initialLoad: true, catalog: new Map(), tooltipTrigger: null, tooltipHideTimer: null,
   };
 
   function readSourcePreference() {
@@ -121,6 +121,16 @@
     return `https://wiki.warframe.com/w/${encodeURIComponent(item.name.replaceAll(' ', '_'))}`;
   }
   function tooltipHtml(item) {
+    const effect = item.effects || {};
+    const effectKey = state.view === 'rank0' ? 'rank0' : 'rankMax';
+    const effectText = typeof effect[effectKey] === 'string' && effect[effectKey].trim()
+      ? effect[effectKey].trim() : null;
+    const shownRank = effectKey === 'rank0' ? 0
+      : (Number.isInteger(effect.maxRank) ? effect.maxRank : item.maxRank);
+    const rankLabel = shownRank > 0 ? `RANK ${shownRank}` : 'RANK 0';
+    const description = effectText
+      ? `<p class="effect-description">${esc(effectText)}</p>`
+      : '<p class="effect-unavailable">Effect description not available in this snapshot. Check the Wiki for details.</p>';
     const sources = Array.isArray(item.acquisitionSources) ? item.acquisitionSources : [];
     const entries = sources.slice(0, 4).map((source) => {
       const name = esc(source.location || 'Unspecified location');
@@ -130,10 +140,22 @@
     }).join('');
     const summary = sources.length ? `<ul class="acquisition-list">${entries}</ul>`
       : `<p class="acquisition-empty">${item.acquisitionStatus === 'documented' ? 'No drop locations are listed for this arcane.' : 'Drop location data is not available in this snapshot.'}</p>`;
-    const more = sources.length > 4 ? `<span>${sources.length - 4} more recorded source${sources.length - 4 === 1 ? "" : "s"} · Wiki for details</span>` : '<span>Vendors and special-event methods may differ</span>';
-    return `<div class="acquisition-heading"><span>ACQUISITION · RECORDED DROPS</span><strong>${esc(item.name)}</strong></div>${summary}<div class="acquisition-footer">${more}<span>Wiki ↗ in actions</span></div>`;
+    const more = sources.length > 4 ? `<span>${sources.length - 4} more recorded source${sources.length - 4 === 1 ? '' : 's'} · Wiki for details</span>` : '<span>Vendors and special-event methods may differ</span>';
+    return `<div class="acquisition-heading"><span>ARCANE DETAILS</span><strong>${esc(item.name)}</strong></div>
+      <section class="effect-section"><div class="tooltip-section-heading">EFFECT <span class="effect-rank">${rankLabel}</span></div>${description}</section>
+      <section class="sources-section"><div class="tooltip-section-heading">ACQUISITION · RECORDED DROPS</div>${summary}</section>
+      <div class="acquisition-footer">${more}<span>Wiki ↗ in actions</span></div>`;
+  }
+  function cancelTooltipHide() {
+    clearTimeout(state.tooltipHideTimer);
+    state.tooltipHideTimer = null;
+  }
+  function scheduleTooltipHide() {
+    cancelTooltipHide();
+    state.tooltipHideTimer = setTimeout(hideTooltip, 160);
   }
   function hideTooltip() {
+    cancelTooltipHide();
     if (state.tooltipTrigger) {
       state.tooltipTrigger.querySelector('a.item-name')?.removeAttribute('aria-describedby');
       state.tooltipTrigger = null;
@@ -141,6 +163,7 @@
     els.tooltip.hidden = true;
   }
   function showTooltip(trigger) {
+    cancelTooltipHide();
     if (!els.sources.checked || state.tooltipTrigger === trigger) return;
     const item = state.catalog.get(trigger.dataset.acquisition);
     if (!item) return;
@@ -157,13 +180,26 @@
       hideTooltip();
       return;
     }
+    els.tooltip.style.maxHeight = '';
     const bounds = els.tooltip.getBoundingClientRect();
     const margin = 12;
     const right = rect.right + margin;
     const left = rect.left - bounds.width - margin;
-    const x = right + bounds.width <= innerWidth - margin ? right
-      : left >= margin ? left : Math.max(margin, Math.min(rect.left, innerWidth - bounds.width - margin));
-    const y = Math.max(margin, Math.min(rect.top, innerHeight - bounds.height - margin));
+    let x, y;
+    if (right + bounds.width <= innerWidth - margin || left >= margin) {
+      x = right + bounds.width <= innerWidth - margin ? right : left;
+      y = Math.max(margin, Math.min(rect.top, innerHeight - bounds.height - margin));
+    } else {
+      const below = innerHeight - rect.bottom - margin * 2;
+      const above = rect.top - margin * 2;
+      const placeBelow = below >= above;
+      const space = Math.max(100, placeBelow ? below : above);
+      els.tooltip.style.maxHeight = `${Math.min(450, space)}px`;
+      const height = els.tooltip.getBoundingClientRect().height;
+      x = Math.max(margin, Math.min(rect.left, innerWidth - bounds.width - margin));
+      y = placeBelow ? rect.bottom + margin : rect.top - height - margin;
+      y = Math.max(margin, Math.min(y, innerHeight - height - margin));
+    }
     els.tooltip.style.left = `${x}px`;
     els.tooltip.style.top = `${y}px`;
   }
@@ -320,12 +356,13 @@
   }
   function csvValue(value) { return `"${String(value ?? '').replaceAll('"', '""')}"`; }
   function exportCSV() {
-    const headers = ['Arcane', 'Max Rank', 'Rank 0 Sell (pt)', 'Rank 0 Buy (pt)', 'Rank 0 Median Ask (pt)', 'Max Rank Sell (pt)', 'Max Rank Buy (pt)', 'Max Rank Median Ask (pt)', 'Max Rank Spread (pt)', 'Listings (both ranks)', 'Market URL', 'Recorded Drop Sources', 'Wiki URL'];
+    const headers = ['Arcane', 'Max Rank', 'Rank 0 Sell (pt)', 'Rank 0 Buy (pt)', 'Rank 0 Median Ask (pt)', 'Max Rank Sell (pt)', 'Max Rank Buy (pt)', 'Max Rank Median Ask (pt)', 'Max Rank Spread (pt)', 'Listings (both ranks)', 'Market URL', 'Recorded Drop Sources', 'Wiki URL', 'Rank 0 Effect', 'Max Rank Effect'];
     const data = visibleItems().map((item) => {
       const r0 = getSide(item, 'rank0'), max = getSide(item, 'rankMax');
       return [item.name, item.maxRank, r0?.ask, r0?.bid, r0?.medianAsk, max?.ask, max?.bid, max?.medianAsk,
         getSpread(max), volume(item), `https://warframe.market/items/${encodeURIComponent(item.slug)}`,
-        (item.acquisitionSources || []).map((source) => source.location).join('; '), wikiUrl(item)].map(csvValue).join(',');
+        (item.acquisitionSources || []).map((source) => source.location).join('; '), wikiUrl(item),
+        item.effects?.rank0, item.effects?.rankMax].map(csvValue).join(',');
     });
     const csv = '\uFEFF' + [headers.map(csvValue).join(','), ...data].join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -368,8 +405,11 @@
     if (trigger && !trigger.contains(event.relatedTarget)) showTooltip(trigger);
   });
   els.body.addEventListener('pointerout', (event) => {
-    if (state.tooltipTrigger && !state.tooltipTrigger.contains(event.relatedTarget)) hideTooltip();
+    if (state.tooltipTrigger && !state.tooltipTrigger.contains(event.relatedTarget) &&
+        !els.tooltip.contains(event.relatedTarget)) scheduleTooltipHide();
   });
+  els.tooltip.addEventListener('pointerenter', cancelTooltipHide);
+  els.tooltip.addEventListener('pointerleave', scheduleTooltipHide);
   els.body.addEventListener('focusin', (event) => {
     const trigger = event.target.closest('[data-acquisition]');
     if (trigger) showTooltip(trigger);

@@ -96,12 +96,39 @@ class TestArcanePriceUpdater(unittest.TestCase):
         self.assertEqual(molt["wikiUrl"], "https://wiki.warframe.com/w/Molt_Augmented")
         self.assertEqual(molt["acquisitionSources"], [])
 
+    def test_effects_include_rank_zero_and_max_rank(self):
+        index = market.build_acquisition_index([{
+            "name": "Arcane Avenger",
+            "levelStats": [
+                {"stats": ["On Damaged:\n21% chance for +7.5% Critical Chance for 12s"]},
+                {"stats": ["On Damaged:\n21% chance for +45% Critical Chance for 12s\n+1 Arcane Revive", "+1 Arcane Revive"]},
+            ],
+            "drops": [],
+        }])
+        entries = market.filter_arcanes(FakeMarketClient().get("/items"))
+        market.attach_acquisition(entries, index)
+        effect = entries[0]["effects"]
+        self.assertEqual(effect["rank0"], "On Damaged:\n21% chance for +7.5% Critical Chance for 12s")
+        self.assertEqual(effect["rankMax"], "On Damaged:\n21% chance for +45% Critical Chance for 12s\n+1 Arcane Revive")
+        self.assertEqual(effect["maxRank"], 1)
+        self.assertEqual(effect["rankMax"].count("+1 Arcane Revive"), 1)
+
+    def test_effect_fallback_and_invalid_stats(self):
+        self.assertEqual(market.arcane_effects({"levelStats": [None, {"stats": [0, False, None]}]}),
+                         {"rank0": None, "rankMax": None, "maxRank": None})
+        self.assertEqual(market.arcane_effects({"description": "  Restores shields.  "}),
+                         {"rank0": "Restores shields.", "rankMax": "Restores shields.", "maxRank": None})
+        self.assertEqual(market.arcane_effects({"levelStats": [
+            {"stats": ["Shield: +10%"]}, {"stats": ["Shield: +20%"]}]}),
+            {"rank0": "Shield: +10%", "rankMax": "Shield: +20%", "maxRank": 1})
+
     def test_unknown_arcane_has_no_made_up_sources(self):
         entries = market.filter_arcanes(FakeMarketClient().get("/items"))
         market.attach_acquisition(entries, {})
         self.assertTrue(all(entry["acquisitionStatus"] == "unavailable" for entry in entries))
         self.assertTrue(all(entry["acquisitionSources"] == [] for entry in entries))
         self.assertTrue(all(entry["wikiUrl"].startswith("https://wiki.warframe.com/w/") for entry in entries))
+        self.assertTrue(all(entry["effects"]["rankMax"] is None for entry in entries))
 
     def test_normalized_acquisition_names(self):
         self.assertEqual(market.normalized_name("  Molt--Augmented "), market.normalized_name("MOLT AUGMENTED"))

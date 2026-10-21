@@ -121,6 +121,37 @@ def wiki_link(name: str, candidate: str | None = None) -> str:
     return WIKI_BASE + urllib.parse.quote(name.replace(" ", "_"), safe="()")
 
 
+def arcane_effects(record: dict) -> dict:
+    ranks = record.get("levelStats")
+    descriptions = []
+    if isinstance(ranks, list):
+        for rank in ranks:
+            lines = []
+            seen = set()
+            stats = rank.get("stats") if isinstance(rank, dict) else None
+            if isinstance(stats, str):
+                stats = [stats]
+            if isinstance(stats, list):
+                for stat in stats:
+                    if not isinstance(stat, str):
+                        continue
+                    for line in stat.replace("\r", "\n").split("\n"):
+                        line = re.sub(r"\s+", " ", line).strip()
+                        if line and line not in seen:
+                            seen.add(line)
+                            lines.append(line)
+            descriptions.append("\n".join(lines)[:2500] if lines else None)
+    if descriptions and any(descriptions):
+        return {
+            "rank0": descriptions[0],
+            "rankMax": descriptions[-1],
+            "maxRank": len(descriptions) - 1,
+        }
+    fallback = record.get("description")
+    fallback = fallback.strip()[:2500] if isinstance(fallback, str) and fallback.strip() else None
+    return {"rank0": fallback, "rankMax": fallback, "maxRank": None}
+
+
 def build_acquisition_index(records: list[dict]) -> dict[str, dict]:
     index = {}
     for record in records:
@@ -147,6 +178,7 @@ def build_acquisition_index(records: list[dict]) -> dict[str, dict]:
         index[normalized_name(record["name"])] = {
             "sources": sorted(sources, key=lambda source: (source["chance"] is None, -(source["chance"] or 0), source["location"]))[:24],
             "wikiUrl": wiki_link(record["name"], record.get("wikiaUrl")),
+            "effects": arcane_effects(record),
         }
     return index
 
@@ -169,6 +201,7 @@ def attach_acquisition(items: list[dict], index: dict[str, dict]) -> None:
         item["wikiUrl"] = details["wikiUrl"] if details else wiki_link(item["name"])
         item["acquisitionSources"] = details["sources"] if details else []
         item["acquisitionStatus"] = "documented" if details else "unavailable"
+        item["effects"] = details["effects"] if details else {"rank0": None, "rankMax": None, "maxRank": None}
 
 
 def _side(orders: list[dict]) -> dict:
