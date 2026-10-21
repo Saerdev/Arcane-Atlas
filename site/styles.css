@@ -49,6 +49,12 @@ footer a{color:#b1dbd0}
 
 .hero-meta #stat-total{font-family:var(--font-head);color:var(--teal);font-size:17px;font-weight:700;vertical-align:-1px}
 
+/* Keep the Actions heading centered over the star, Market, and Wiki buttons. */
+.price-table th:last-child,
+.price-table td:last-child {
+  text-align: center;
+}
+
 /* Inline Warframe damage/status icons supplied by the Wiki. */
 .effect-status-icon {
   display: inline-block;
@@ -57,4 +63,50 @@ footer a{color:#b1dbd0}
   margin: 0 0.12em;
   object-fit: contain;
   vertical-align: -0.18em;
+}
+/* Closed-order board: fit all seven columns on desktop instead of clipping Actions. */
+.price-table {
+  table-layout: fixed;
+  min-width: 1180px;
+}
+.price-table th,
+.price-table td {
+  padding-left: 9px;
+  padding-right: 9px;
+}
+.price-table th:first-child,
+.price-table td:first-child {
+  width: 20%;
+  min-width: 0;
+  padding-left: 18px;
+}
+.price-table th:nth-child(n+2):nth-child(-n+5),
+.price-table td:nth-child(n+2):nth-child(-n+5) { width: 14.25%; }
+.price-table th:nth-child(6),
+.price-table td:nth-child(6) { width: 9%; }
+.price-table th:last-child,
+.price-table td:last-child { width: 14%; padding-right: 14px; }
+.price-table .th-unit {
+  white-space: normal;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.item-cell, .item-details { min-width: 0; }
+.item-name { white-space: normal; overflow-wrap: anywhere; }
+.action-group { gap: 3px; }
+.action-group a { padding: 5px; }
+.favorite-btn { padding: 3px 4px; }
+.table-scroller { overflow-x: auto; overscroll-behavior-x: contain; }
+
+/* On smaller screens the wide table remains horizontally scrollable. */
+.table-scroll-hint {
+  display: none;
+  padding: 9px 18px;
+  background: #101d28;
+  color: #9bb7bd;
+  border-bottom: 1px solid #2b3944;
+  font-size: 11px;
+}
+@media (max-width: 1280px) {
+  .table-scroll-hint { display: block; }
 }
