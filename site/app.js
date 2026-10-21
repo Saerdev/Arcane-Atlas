@@ -3,28 +3,35 @@
   const $ = (id) => document.getElementById(id);
   const els = {
     search: $('search'), sort: $('sort'), direction: $('sort-direction'),
-    online: $('online-only'), priced: $('priced-only'), favorites: $('favorites-only'),
+    online: $('online-only'), priced: $('priced-only'), sources: $('source-tooltips'), favorites: $('favorites-only'),
     refresh: $('refresh-button'), export: $('export-button'), body: $('table-body'),
     head: $('table-head'), count: $('result-count'), bottomCount: $('bottom-count'),
     progressArea: $('progress-area'), progressLabel: $('progress-label'), progressCount: $('progress-count'),
     progressBar: $('progress-bar'), error: $('error-banner'), heroStatus: $('hero-status'),
     statTotal: $('stat-total'), statLoaded: $('stat-loaded'), statLoadedDesc: $('stat-load-desc'),
     statPriced: $('stat-priced'), statUpdated: $('stat-updated'), statUpdatedDesc: $('stat-updated-desc'),
+    tooltip: $('arcane-tooltip'),
   };
 
   const state = {
     items: [], prices: new Map(), favorites: readFavorites(), view: 'compare',
     favoritesOnly: false, sort: 'name', direction: 'asc',
     active: false, processed: 0, failed: 0, completedAt: 0,
-    renderPending: false, loadingCatalog: true, fetchSequence: 0, initialLoad: true,
+    renderPending: false, loadingCatalog: true, fetchSequence: 0, initialLoad: true, catalog: new Map(), tooltipTrigger: null,
   };
+
+  function readSourcePreference() {
+    try { return localStorage.getItem('arcane-atlas-source-tooltips') !== 'off'; }
+    catch { return true; }
+  }
+  els.sources.checked = readSourcePreference();
 
   function readFavorites() {
     try { return new Set(JSON.parse(localStorage.getItem('arcane-atlas-favorites') || '[]')); }
     catch { return new Set(); }
   }
   function persistFavorites() {
-    try { localStorage.setItem('arcane-atlas-favorites', JSON.stringify([...state.favorites])); } catch { /* private browsing */ }
+    try { localStorage.setItem('arcane-atlas-favorites', JSON.stringify([...state.favorites])); } catch {}
   }
   function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
@@ -110,12 +117,64 @@
     }
     els.head.innerHTML = `<tr>${columns.join('')}</tr>`;
   }
+  function wikiUrl(item) {
+    if (typeof item.wikiUrl === 'string' && /^https:\/\/wiki\.warframe\.com\/w\//.test(item.wikiUrl)) return item.wikiUrl;
+    return `https://wiki.warframe.com/w/${encodeURIComponent(item.name.replaceAll(' ', '_'))}`;
+  }
+  function tooltipHtml(item) {
+    const sources = Array.isArray(item.acquisitionSources) ? item.acquisitionSources : [];
+    const entries = sources.slice(0, 4).map((source) => {
+      const name = esc(source.location || 'Unspecified location');
+      const chance = typeof source.chance === 'number' && Number.isFinite(source.chance)
+        ? `<span class="acquisition-chance">${esc(source.chance.toLocaleString('en-US', { maximumFractionDigits: 3 }))}%</span>` : '';
+      return `<li><span>${name}</span>${chance}</li>`;
+    }).join('');
+    const summary = sources.length ? `<ul class="acquisition-list">${entries}</ul>`
+      : `<p class="acquisition-empty">${item.acquisitionStatus === 'documented' ? 'No drop locations are listed for this arcane.' : 'Drop location data is not available in this snapshot.'}</p>`;
+    const more = sources.length > 4 ? `<span>${sources.length - 4} more recorded source${sources.length - 4 === 1 ? "" : "s"} · Wiki for details</span>` : '<span>Vendors and special-event methods may differ</span>';
+    return `<div class="acquisition-heading"><span>ACQUISITION · RECORDED DROPS</span><strong>${esc(item.name)}</strong></div>${summary}<div class="acquisition-footer">${more}<span>Wiki ↗ in actions</span></div>`;
+  }
+  function hideTooltip() {
+    if (state.tooltipTrigger) {
+      state.tooltipTrigger.querySelector('a.item-name')?.removeAttribute('aria-describedby');
+      state.tooltipTrigger = null;
+    }
+    els.tooltip.hidden = true;
+  }
+  function showTooltip(trigger) {
+    if (!els.sources.checked || state.tooltipTrigger === trigger) return;
+    const item = state.catalog.get(trigger.dataset.acquisition);
+    if (!item) return;
+    hideTooltip();
+    state.tooltipTrigger = trigger;
+    els.tooltip.innerHTML = tooltipHtml(item);
+    els.tooltip.hidden = false;
+    trigger.querySelector('a.item-name')?.setAttribute('aria-describedby', 'arcane-tooltip');
+    positionTooltip(trigger);
+  }
+  function positionTooltip(trigger) {
+    const rect = trigger.getBoundingClientRect();
+    if (!trigger.isConnected || rect.bottom < 0 || rect.top > innerHeight) {
+      hideTooltip();
+      return;
+    }
+    const bounds = els.tooltip.getBoundingClientRect();
+    const margin = 12;
+    const right = rect.right + margin;
+    const left = rect.left - bounds.width - margin;
+    const x = right + bounds.width <= innerWidth - margin ? right
+      : left >= margin ? left : Math.max(margin, Math.min(rect.left, innerWidth - bounds.width - margin));
+    const y = Math.max(margin, Math.min(rect.top, innerHeight - bounds.height - margin));
+    els.tooltip.style.left = `${x}px`;
+    els.tooltip.style.top = `${y}px`;
+  }
+
   function itemCell(item) {
     const icon = item.icon
       ? `<img class="item-icon" src="${esc(item.icon)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
       : '<span class="item-icon item-fallback" aria-hidden="true">✧</span>';
     const marketUrl = `https://warframe.market/items/${encodeURIComponent(item.slug)}`;
-    return `<div class="item-cell">${icon}<div class="item-details"><a class="item-name" target="_blank" rel="noopener noreferrer" href="${marketUrl}">${esc(item.name)}</a><span class="item-sub">${item.maxRank > 0 ? `MAX RANK ${item.maxRank}` : 'UNRANKED'}</span></div></div>`;
+    return `<div class="item-cell" data-acquisition="${esc(item.slug)}">${icon}<div class="item-details"><a class="item-name" target="_blank" rel="noopener noreferrer" href="${marketUrl}">${esc(item.name)}</a><span class="item-sub">${item.maxRank > 0 ? `MAX RANK ${item.maxRank}` : 'UNRANKED'}</span></div></div>`;
   }
   function spreadCell(side) {
     const value = getSpread(side);
@@ -126,7 +185,7 @@
     const rank0 = getSide(item, 'rank0'), rankMax = getSide(item, 'rankMax');
     const fav = state.favorites.has(item.slug);
     const marketUrl = `https://warframe.market/items/${encodeURIComponent(item.slug)}`;
-    const action = `<td class="action-cell"><button type="button" class="favorite-btn${fav ? ' active' : ''}" aria-label="${fav ? 'Remove from' : 'Add to'} watchlist: ${esc(item.name)}" aria-pressed="${fav}" data-favorite="${esc(item.slug)}">${fav ? '★' : '☆'}</button><a class="outbound-link" href="${marketUrl}" target="_blank" rel="noopener noreferrer" title="View on Warframe.market" aria-label="Open ${esc(item.name)} on Warframe.market">↗</a></td>`;
+    const action = `<td class="action-cell"><div class="action-group"><button type="button" class="favorite-btn${fav ? ' active' : ''}" aria-label="${fav ? 'Remove from' : 'Add to'} watchlist: ${esc(item.name)}" aria-pressed="${fav}" data-favorite="${esc(item.slug)}">${fav ? '★' : '☆'}</button><a class="outbound-link" href="${marketUrl}" target="_blank" rel="noopener noreferrer" title="View on Warframe.market" aria-label="Open ${esc(item.name)} on Warframe.market">Market ↗</a><a class="wiki-link" href="${esc(wikiUrl(item))}" target="_blank" rel="noopener noreferrer" title="Acquisition details on Warframe Wiki" aria-label="Open ${esc(item.name)} on Warframe Wiki">Wiki ↗</a></div></td>`;
     if (state.view === 'compare') {
       return `<tr><td>${itemCell(item)}</td><td>${showPrice(rank0?.ask, 'ask')}</td><td>${showPrice(rank0?.bid, 'bid')}</td><td>${showPrice(rankMax?.ask, 'ask')}</td><td>${showPrice(rankMax?.bid, 'bid')}</td><td>${spreadCell(rankMax)}</td><td><span class="listing-count">${volume(item)}</span></td>${action}</tr>`;
     }
@@ -135,6 +194,7 @@
   }
 
   function render() {
+    hideTooltip();
     state.renderPending = false;
     renderHeader();
     const matches = visibleItems();
@@ -212,6 +272,7 @@
       if (!snapshot.items.length || !snapshot.completedAt) {
         if (!hadData) {
           state.items = [];
+          state.catalog.clear();
           state.prices.clear();
           state.completedAt = 0;
           state.loadingCatalog = false;
@@ -220,6 +281,7 @@
         return;
       }
       state.items = snapshot.items;
+      state.catalog = new Map(state.items.map((item) => [item.slug, item]));
       state.prices = new Map(snapshot.prices.map((p) => [p.slug, p]));
       state.completedAt = Number(snapshot.completedAt) || 0;
       state.failed = Number(snapshot.failed) || 0;
@@ -260,11 +322,12 @@
   }
   function csvValue(value) { return `"${String(value ?? '').replaceAll('"', '""')}"`; }
   function exportCSV() {
-    const headers = ['Arcane', 'Max Rank', 'Rank 0 Sell (pt)', 'Rank 0 Buy (pt)', 'Rank 0 Median Ask (pt)', 'Max Rank Sell (pt)', 'Max Rank Buy (pt)', 'Max Rank Median Ask (pt)', 'Max Rank Spread (pt)', 'Listings (both ranks)', 'Market URL'];
+    const headers = ['Arcane', 'Max Rank', 'Rank 0 Sell (pt)', 'Rank 0 Buy (pt)', 'Rank 0 Median Ask (pt)', 'Max Rank Sell (pt)', 'Max Rank Buy (pt)', 'Max Rank Median Ask (pt)', 'Max Rank Spread (pt)', 'Listings (both ranks)', 'Market URL', 'Recorded Drop Sources', 'Wiki URL'];
     const data = visibleItems().map((item) => {
       const r0 = getSide(item, 'rank0'), max = getSide(item, 'rankMax');
       return [item.name, item.maxRank, r0?.ask, r0?.bid, r0?.medianAsk, max?.ask, max?.bid, max?.medianAsk,
-        getSpread(max), volume(item), `https://warframe.market/items/${encodeURIComponent(item.slug)}`].map(csvValue).join(',');
+        getSpread(max), volume(item), `https://warframe.market/items/${encodeURIComponent(item.slug)}`,
+        (item.acquisitionSources || []).map((source) => source.location).join('; '), wikiUrl(item)].map(csvValue).join(',');
     });
     const csv = '\uFEFF' + [headers.map(csvValue).join(','), ...data].join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -279,6 +342,10 @@
   els.search.addEventListener('input', scheduleRender);
   els.online.addEventListener('change', scheduleRender);
   els.priced.addEventListener('change', scheduleRender);
+  els.sources.addEventListener('change', () => {
+    if (!els.sources.checked) hideTooltip();
+    try { localStorage.setItem('arcane-atlas-source-tooltips', els.sources.checked ? 'on' : 'off'); } catch {}
+  });
   els.sort.addEventListener('change', () => setSort(els.sort.value));
   els.direction.addEventListener('click', () => { state.direction = state.direction === 'asc' ? 'desc' : 'asc'; updateDirection(); scheduleRender(); });
   els.refresh.addEventListener('click', connect);
@@ -298,6 +365,22 @@
     });
     scheduleRender();
   }));
+  els.body.addEventListener('pointerover', (event) => {
+    const trigger = event.target.closest('[data-acquisition]');
+    if (trigger && !trigger.contains(event.relatedTarget)) showTooltip(trigger);
+  });
+  els.body.addEventListener('pointerout', (event) => {
+    if (state.tooltipTrigger && !state.tooltipTrigger.contains(event.relatedTarget)) hideTooltip();
+  });
+  els.body.addEventListener('focusin', (event) => {
+    const trigger = event.target.closest('[data-acquisition]');
+    if (trigger) showTooltip(trigger);
+  });
+  els.body.addEventListener('focusout', (event) => {
+    if (state.tooltipTrigger && !state.tooltipTrigger.contains(event.relatedTarget)) hideTooltip();
+  });
+  window.addEventListener('scroll', () => { if (state.tooltipTrigger) positionTooltip(state.tooltipTrigger); }, true);
+  window.addEventListener('resize', hideTooltip);
   els.head.addEventListener('click', (event) => { const th = event.target.closest('th[data-sort]'); if (th) setSort(th.dataset.sort); });
   els.body.addEventListener('click', (event) => {
     const button = event.target.closest('[data-favorite]');

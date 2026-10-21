@@ -51,7 +51,7 @@
 
       <section class="market-panel" aria-labelledby="market-heading">
         <div class="section-head">
-          <div><div class="section-kicker">01 / THE MARKET INDEX</div><h2 id="market-heading">Arcane price board <span class="section-cross">✳</span></h2><p>Compare rank 0 and maximum-rank offers from the last published scan. No login required.</p></div>
+          <div><div class="section-kicker">01 / THE MARKET INDEX</div><h2 id="market-heading">Arcane price board <span class="section-cross">✳</span></h2><p>Compare rank 0 and maximum-rank offers from the last published scan. Hover over an arcane for drop sources, or open its Wiki page. No login required.</p></div>
           <button class="refresh-button" type="button" id="refresh-button"><span class="refresh-icon" aria-hidden="true">↻</span> Check for updates</button>
         </div>
 
@@ -71,6 +71,7 @@
           <div class="view-switch" role="group" aria-label="Rank display"><button type="button" class="active" data-view="compare" aria-pressed="true">Compare both</button><button type="button" data-view="rank0" aria-pressed="false">Rank 0</button><button type="button" data-view="rankMax" aria-pressed="false">Max rank</button></div>
           <label class="switch-control"><input id="online-only" type="checkbox" checked><span class="switch-track"></span><span>Online at last scan</span></label>
           <label class="switch-control"><input id="priced-only" type="checkbox"><span class="switch-track"></span><span>Only with prices</span></label>
+          <label class="switch-control"><input id="source-tooltips" type="checkbox" checked><span class="switch-track"></span><span>Acquisition tooltips</span></label>
           <button class="favorites-filter" id="favorites-only" type="button" aria-pressed="false"><span>☆</span> Watchlist</button>
           <div class="toolbar-spacer"></div>
           <button class="text-button" id="export-button" type="button"><span>⇩</span> Export CSV</button>
@@ -81,9 +82,10 @@
         <div class="table-footer"><span id="bottom-count">—</span><div><span class="tiny-bullet">◈</span> Prices reflect listings, not completed transactions. <a href="https://warframe.market" target="_blank" rel="noopener noreferrer">Source ↗</a></div></div>
       </section>
 
-      <section class="footnotes"><div><span class="footnote-icon">ⓘ</span><div><strong>How to read the board</strong><p><b>Sell</b> is the cheapest current listing from a seller; <b>Buy</b> is the highest offer from a buyer. The <b>spread</b> is the sell price minus the buy price, when both exist. Values are per unit when listings use bulk trades.</p></div></div><div><span class="footnote-icon">⌁</span><div><strong>About freshness</strong><p>The public site reads a snapshot updated by a scheduled process approximately every 30 minutes, subject to API availability and hosting delays. “Online” means online or in-game at the time of that scan, not necessarily right now. The update button checks for a newer published snapshot; it does not trigger a market scan.</p></div></div></section>
+      <section class="footnotes"><div><span class="footnote-icon">ⓘ</span><div><strong>How to read the board</strong><p><b>Sell</b> is the cheapest current listing from a seller; <b>Buy</b> is the highest offer from a buyer. The <b>spread</b> is the sell price minus the buy price, when both exist. Values are per unit when listings use bulk trades.</p></div></div><div><span class="footnote-icon">⌁</span><div><strong>About freshness</strong><p>The public site reads a snapshot updated by a scheduled process approximately every 30 minutes, subject to API availability and hosting delays. “Online” means online or in-game at the time of that scan, not necessarily right now. The update button checks for a newer published snapshot; it does not trigger a market scan. Acquisition sources come from WFCD drop data and may omit vendors or time-limited events. Use each arcane’s Wiki link for full acquisition methods.</p></div></div></section>
     </main>
-    <footer><span><span class="footer-mark">✧</span> ARCANE ATLAS <span class="footer-sep">/</span> A community-made trading dashboard</span><span>Not affiliated with Digital Extremes or Warframe.market · Warframe is a trademark of Digital Extremes.</span></footer>
+    <footer><span><span class="footer-mark">✧</span> ARCANE ATLAS <span class="footer-sep">/</span> A community-made trading dashboard</span><span>Not affiliated with Digital Extremes, Warframe.market or WFCD · <a href="https://github.com/WFCD/warframe-items" target="_blank" rel="noopener noreferrer">Drop data: WFCD</a> · Warframe is a trademark of Digital Extremes.</span></footer>
   </div>
+  <div id="arcane-tooltip" class="acquisition-tooltip" role="tooltip" hidden></div>
 </body>
 </html>

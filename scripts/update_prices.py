@@ -16,13 +16,18 @@ import statistics
 import sys
 import tempfile
 import time
+import unicodedata
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
 
 API_ROOT = "https://api.warframe.market/v2"
 DEFAULT_OUTPUT = Path(__file__).resolve().parents[1] / "site" / "data" / "prices.json"
-USER_AGENT = os.getenv("WFM_USER_AGENT", "ArcaneAtlas/2.0 (community arcane price dashboard)")
+USER_AGENT = os.getenv("WFM_USER_AGENT", "ArcaneAtlas/2.1 (community arcane price dashboard)")
+ACQUISITION_URL = "https://raw.githubusercontent.com/WFCD/warframe-items/master/data/json/Arcanes.json"
+WIKI_BASE = "https://wiki.warframe.com/w/"
+
 
 
 class MarketError(RuntimeError):
@@ -78,7 +83,7 @@ class MarketClient:
 
 
 def filter_arcanes(items: list[dict]) -> list[dict]:
-    """Only tradable catalog items tagged as arcanes; ignore mod entries."""
+    """Select tradable arcane listings from the item catalog."""
     found = []
     for item in items:
         if not isinstance(item, dict) or not isinstance(item.get("slug"), str):
@@ -103,6 +108,70 @@ def filter_arcanes(items: list[dict]) -> list[dict]:
             "icon": safe_icon,
         })
     return sorted(found, key=lambda a: a["name"].casefold())
+
+
+
+def normalized_name(value: str) -> str:
+    text = unicodedata.normalize("NFKD", value).casefold()
+    return re.sub(r"[^a-z0-9]+", " ", text).strip()
+
+
+def wiki_link(name: str, candidate: str | None = None) -> str:
+    if isinstance(candidate, str):
+        parsed = urllib.parse.urlsplit(candidate)
+        if parsed.scheme == "https" and parsed.netloc == "wiki.warframe.com" and parsed.path.startswith("/w/"):
+            return candidate
+    return WIKI_BASE + urllib.parse.quote(name.replace(" ", "_"), safe="()")
+
+
+def build_acquisition_index(records: list[dict]) -> dict[str, dict]:
+    index = {}
+    for record in records:
+        if not isinstance(record, dict) or not isinstance(record.get("name"), str):
+            continue
+        sources = []
+        seen = set()
+        for drop in record.get("drops") or []:
+            if not isinstance(drop, dict):
+                continue
+            location = drop.get("location")
+            if not isinstance(location, str) or not location.strip():
+                continue
+            location = location.strip()[:180]
+            chance = drop.get("chance")
+            if isinstance(chance, bool) or not isinstance(chance, (int, float)) or not math.isfinite(chance) or not 0 <= chance <= 100:
+                chance = None
+            else:
+                chance = round(float(chance), 3)
+            key = (location, chance)
+            if key not in seen:
+                sources.append({"location": location, "chance": chance})
+                seen.add(key)
+        index[normalized_name(record["name"])] = {
+            "sources": sorted(sources, key=lambda source: (source["chance"] is None, -(source["chance"] or 0), source["location"]))[:24],
+            "wikiUrl": wiki_link(record["name"], record.get("wikiaUrl")),
+        }
+    return index
+
+
+def fetch_acquisition_index(url: str = ACQUISITION_URL) -> dict[str, dict]:
+    request = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": USER_AGENT})
+    with urllib.request.urlopen(request, timeout=25) as response:
+        records = json.load(response)
+    if not isinstance(records, list) or not records:
+        raise ValueError("Arcane acquisition catalog is empty or invalid")
+    index = build_acquisition_index(records)
+    if not index:
+        raise ValueError("Arcane acquisition catalog has no usable records")
+    return index
+
+
+def attach_acquisition(items: list[dict], index: dict[str, dict]) -> None:
+    for item in items:
+        details = index.get(normalized_name(item["name"]))
+        item["wikiUrl"] = details["wikiUrl"] if details else wiki_link(item["name"])
+        item["acquisitionSources"] = details["sources"] if details else []
+        item["acquisitionStatus"] = "documented" if details else "unavailable"
 
 
 def _side(orders: list[dict]) -> dict:
@@ -145,11 +214,12 @@ def summarize_orders(orders: list[dict], max_rank: int = 0) -> dict:
     return {"rank0": rank_quotes(0), "rankMax": rank_quotes(max_rank) if max_rank > 0 else None}
 
 
-def collect(client: MarketClient, *, clock=time.time, log=print) -> dict:
+def collect(client: MarketClient, *, acquisition_index=None, clock=time.time, log=print) -> dict:
     started = int(clock() * 1000)
     items = filter_arcanes(client.get("/items"))
     if not items:
         raise MarketError("No arcane items found; refusing to publish an empty board.")
+    attach_acquisition(items, acquisition_index or {})
     prices = []
     errors = 0
     consecutive = 0
@@ -206,7 +276,13 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     try:
         client = MarketClient(args.api_base)
-        snapshot = collect(client)
+        try:
+            acquisition_index = fetch_acquisition_index()
+            print(f"Loaded acquisition data for {len(acquisition_index)} arcanes", flush=True)
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            print(f"Acquisition metadata unavailable; Wiki links remain accessible: {error}", file=sys.stderr, flush=True)
+            acquisition_index = {}
+        snapshot = collect(client, acquisition_index=acquisition_index)
         write_snapshot(snapshot, args.output)
         print(f"Wrote {len(snapshot['prices'])} quotes to {args.output} ({client.request_count} API requests)", flush=True)
         return 0

@@ -72,6 +72,44 @@ class TestArcanePriceUpdater(unittest.TestCase):
         self.assertEqual(prices["rank0"]["online"]["bid"], 12)
         self.assertEqual(prices["rankMax"]["recent"]["ask"], None)
 
+    def test_acquisition_index_and_wiki_links(self):
+        index = market.build_acquisition_index([
+            {"name": "Arcane Avenger", "wikiaUrl": "https://wiki.warframe.com/w/Arcane_Avenger", "drops": [
+                {"location": "Eidolon Hydrolyst", "chance": 11.7},
+                {"location": "Eidolon Hydrolyst (Capture)", "chance": 11.24},
+                {"location": "Eidolon Hydrolyst", "chance": 11.7},
+                {"location": "", "chance": 50},
+                {"location": "Unreliable source", "chance": -1},
+            ]},
+            {"name": "Molt Augmented", "wikiaUrl": "javascript:alert(1)", "drops": []},
+        ])
+        data = market.collect(FakeMarketClient(), acquisition_index=index,
+                              clock=lambda: 1792600000.0, log=lambda *a, **k: None)
+        avenger = data["items"][0]
+        self.assertEqual(avenger["wikiUrl"], "https://wiki.warframe.com/w/Arcane_Avenger")
+        self.assertEqual(avenger["acquisitionStatus"], "documented")
+        self.assertEqual(len(avenger["acquisitionSources"]), 3)
+        self.assertEqual(avenger["acquisitionSources"][0]["location"], "Eidolon Hydrolyst")
+        self.assertEqual(avenger["acquisitionSources"][0]["chance"], 11.7)
+        self.assertIsNone(avenger["acquisitionSources"][-1]["chance"])
+        molt = data["items"][1]
+        self.assertEqual(molt["wikiUrl"], "https://wiki.warframe.com/w/Molt_Augmented")
+        self.assertEqual(molt["acquisitionSources"], [])
+
+    def test_unknown_arcane_has_no_made_up_sources(self):
+        entries = market.filter_arcanes(FakeMarketClient().get("/items"))
+        market.attach_acquisition(entries, {})
+        self.assertTrue(all(entry["acquisitionStatus"] == "unavailable" for entry in entries))
+        self.assertTrue(all(entry["acquisitionSources"] == [] for entry in entries))
+        self.assertTrue(all(entry["wikiUrl"].startswith("https://wiki.warframe.com/w/") for entry in entries))
+
+    def test_normalized_acquisition_names(self):
+        self.assertEqual(market.normalized_name("  Molt--Augmented "), market.normalized_name("MOLT AUGMENTED"))
+        index = market.build_acquisition_index([{"name": "Molt-AUgmented", "drops": [{"location": "Zariman", "chance": 10}]}])
+        entries = market.filter_arcanes(FakeMarketClient().get("/items"))
+        market.attach_acquisition(entries, index)
+        self.assertEqual(entries[1]["acquisitionSources"][0]["location"], "Zariman")
+
     def test_snapshot_and_atomic_writer(self):
         data = market.collect(FakeMarketClient(), clock=lambda: 1792600000.0, log=lambda *a, **k: None)
         self.assertEqual(data["status"], "complete")

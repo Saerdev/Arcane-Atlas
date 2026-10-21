@@ -10,7 +10,7 @@ on:
     - cron: "17,47 * * * *"
 
 permissions:
-  contents: write # keep a dormant public repo active so GitHub does not disable scheduled refreshes
+  contents: write
   pages: write
   id-token: write
 
@@ -34,7 +34,7 @@ jobs:
 
       - name: Generate fresh prices (Python standard library only)
         env:
-          WFM_USER_AGENT: ArcaneAtlas/2.0 (+https://github.com/${{ github.repository }})
+          WFM_USER_AGENT: ArcaneAtlas/2.1 (+https://github.com/${{ github.repository }})
         run: python3 scripts/update_prices.py --output site/data/prices.json
 
       # GitHub disables scheduled workflows in public repos after 60 days of

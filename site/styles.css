@@ -11,7 +11,29 @@
 @media(max-width:430px){.hero h1{font-size:39px}.brand-type small{display:none}.topbar-link{font-size:10px;padding:7px}.hero-meta{font-size:11px}.meta-divider{margin:0 10px}.metric-label{letter-spacing:.7px;font-size:9px}.metric-number{font-size:27px}.date-number{font-size:22px}.select-wrap{flex-basis:60%}.sort-wrap{flex-basis:60%}.sort-direction{width:42px}.toolbar-secondary{gap:15px}.section-head{padding:22px 15px}.switch-control{font-size:11px}.favorite-btn{font-size:20px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 
-/* Static deployment: fixed, accurately labelled market scope instead of unavailable live platform selection. */
 .market-scope{display:flex;flex-direction:column;justify-content:center;gap:4px;padding:6px 14px;background:#101c27;border:1px solid #34404b;border-radius:4px;min-width:150px;height:43px}
 .market-scope strong{color:#baffec;font-size:12px;font-weight:600;white-space:nowrap}
 @media(max-width:780px){.market-scope{flex:1;min-width:0}}
+
+.action-group{display:inline-flex;align-items:center;justify-content:flex-end;gap:8px;white-space:nowrap}
+.action-group a{font-size:11px;font-weight:700;letter-spacing:.1px;padding:6px 8px;border:1px solid #2d4946;border-radius:5px;display:inline-flex;align-items:center;min-height:30px}
+.action-group .outbound-link{color:#84e9d2;background:#15302e}
+.action-group .wiki-link{color:#d6bd99;background:#302921;border-color:#57442e}
+.action-group .outbound-link:hover{color:#fff;background:#225149}
+.action-group .wiki-link:hover{color:#fff0d4;background:#493a28}
+.item-cell[data-acquisition]{cursor:help}
+.item-cell[data-acquisition] .item-name{cursor:pointer}
+.acquisition-tooltip{position:fixed;z-index:1000;pointer-events:none;width:min(350px,calc(100vw - 24px));max-height:min(360px,calc(100vh - 24px));overflow:auto;background:#14232e;border:1px solid #49746e;box-shadow:0 20px 48px #000b,0 0 0 1px #29403c;border-radius:9px;padding:15px 16px;color:#dcebea;white-space:normal;line-height:1.4}
+.acquisition-tooltip[hidden]{display:none}
+.acquisition-heading span{display:block;color:#91b5ae;font-size:9px;font-weight:800;letter-spacing:1.4px}
+.acquisition-heading strong{display:block;font-family:var(--font-head);font-size:15px;margin-top:4px;color:#f2fcfa}
+.acquisition-list{margin:12px 0 7px;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.acquisition-list li{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;color:#cadadf;font-size:11px}
+.acquisition-list li span:first-child{flex:1;min-width:0}
+.acquisition-chance{color:#91f0d5;font-family:var(--font-head);font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:700}
+.acquisition-empty{margin:12px 0;color:#b0c1c8;font-size:12px}
+.acquisition-footer{display:flex;justify-content:space-between;gap:10px;padding-top:10px;margin-top:12px;border-top:1px solid #304651;color:#91a5aa;font-size:10px}
+.acquisition-footer span:first-child{max-width:200px}
+.acquisition-footer span:last-child{color:#d5bd95;white-space:nowrap}
+footer a{color:#b1dbd0}
+@media(max-width:780px){.action-group{gap:3px}.action-group a{padding:5px 6px;font-size:10px}.acquisition-tooltip{max-height:min(350px,calc(100vh - 24px))}}
