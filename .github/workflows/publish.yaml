@@ -4,10 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Workflow is triggered every 30 minutes externally by cron-job.org since github workflow scheduling has been unreliable
   # Every 30 minutes, offset from the busy top-of-hour window. Scheduled
   # executions are best-effort and can be delayed or dropped by GitHub.
-  schedule:
-    - cron: "17,47 * * * *"
+  #schedule:
+  #  - cron: "17,47 * * * *"
 
 permissions:
   contents: write # keep a dormant public repo active so GitHub does not disable scheduled refreshes
