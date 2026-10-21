@@ -4,7 +4,7 @@ Arcane Atlas is an unofficial Warframe community project. It is not affiliated w
 
 ## Warframe.market — pricing and market activity
 
-Arcane Atlas retrieves arcane item information and player buy/sell order data from the [Warframe.market API](https://warframe.market/) (v2). Its optional 48-hour volume figures are derived from the legacy v1 closed-order statistics endpoint. Prices, order counts, and volume figures reflect the data available at the time of the most recent successful update; they are not guarantees of completed trades.
+Arcane Atlas retrieves its arcane catalog from the [Warframe.market API](https://warframe.market/) v2 and reported closed-order prices and 48-hour volume from the legacy v1 statistics endpoint. Prices are derived from hourly aggregated reports, not active buy/sell orders. Data is updated hourly when reported volume is nonzero; it is not proof of completed player-to-player trades.
 
 - Website: https://warframe.market/
 - API rules: https://docs.warframe.market/docs/rules/overview/
