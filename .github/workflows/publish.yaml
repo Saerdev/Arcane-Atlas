@@ -4,11 +4,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  # Workflow is triggered every 30 minutes externally by cron-job.org since github workflow scheduling has been unreliable
-  # Every 30 minutes, offset from the busy top-of-hour window. Scheduled
-  # executions are best-effort and can be delayed or dropped by GitHub.
-  #schedule:
-  #  - cron: "17,47 * * * *"
+  # Trigger externally via cron-job.org once hourly (configure in cron-job.org).
+  # No GitHub Actions schedule is enabled to avoid double refreshes.
 
 permissions:
   contents: write # keep a dormant public repo active so GitHub does not disable scheduled refreshes
@@ -33,40 +30,10 @@ jobs:
       - name: Set up GitHub Pages
         uses: actions/configure-pages@v6
 
-      - name: Set volume cache date
-        id: volume-date
-        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
-
-      - name: Restore daily volume statistics
-        uses: actions/cache@v5
-        with:
-          path: .cache/volume.json
-          key: arcane-volume-${{ runner.os }}-${{ steps.volume-date.outputs.date }}
-          restore-keys: |
-            arcane-volume-${{ runner.os }}-
-
-      - name: Generate fresh prices (Python standard library only)
+      - name: Generate hourly closed-order statistics snapshot
         env:
           WFM_USER_AGENT: ArcaneAtlas/2.0 (+https://github.com/${{ github.repository }})
         run: python3 scripts/update_prices.py --output site/data/prices.json
-
-      # GitHub disables scheduled workflows in public repos after 60 days of
-      # inactivity. This optional empty commit every ~30 inactive days keeps
-      # the public data feed operating, without storing all price snapshots
-      # in git history. GITHUB_TOKEN commits do not trigger new workflows.
-      - name: Keep scheduled updates enabled
-        if: github.event_name == 'schedule'
-        run: |
-          last_commit=$(git log -1 --format=%ct)
-          now=$(date +%s)
-          if (( now - last_commit > 30 * 86400 )); then
-            git -c user.name='github-actions[bot]' \
-                -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
-                commit --allow-empty -m 'chore: keep price updates scheduled'
-            if ! git push origin HEAD:${{ github.ref_name }}; then
-              echo '::warning::Could not keep the repository active; check branch protection and Actions permissions.'
-            fi
-          fi
 
       - name: Upload static website
         uses: actions/upload-pages-artifact@v5
