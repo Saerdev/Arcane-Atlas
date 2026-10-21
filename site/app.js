@@ -154,10 +154,6 @@
     clearTimeout(state.tooltipHideTimer);
     state.tooltipHideTimer = null;
   }
-  function scheduleTooltipHide() {
-    cancelTooltipHide();
-    state.tooltipHideTimer = setTimeout(hideTooltip, 160);
-  }
   function hideTooltip() {
     cancelTooltipHide();
     if (state.tooltipTrigger) {
@@ -407,10 +403,10 @@
   });
   els.body.addEventListener('pointerout', (event) => {
     if (state.tooltipTrigger && !state.tooltipTrigger.contains(event.relatedTarget) &&
-        !els.tooltip.contains(event.relatedTarget)) scheduleTooltipHide();
+        !els.tooltip.contains(event.relatedTarget)) hideTooltip();
   });
   els.tooltip.addEventListener('pointerenter', cancelTooltipHide);
-  els.tooltip.addEventListener('pointerleave', scheduleTooltipHide);
+  els.tooltip.addEventListener('pointerleave', hideTooltip);
   els.body.addEventListener('focusin', (event) => {
     const trigger = event.target.closest('[data-acquisition]');
     if (trigger) showTooltip(trigger);
