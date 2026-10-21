@@ -85,7 +85,6 @@
       return true;
     }).sort((a, b) => {
       const va = sortVal(a), vb = sortVal(b);
-      // Missing data always goes to the bottom, even with descending sort.
       if (va == null && vb != null) return 1;
       if (vb == null && va != null) return -1;
       if (va == null && vb == null) return a.name.localeCompare(b.name);
@@ -261,7 +260,6 @@
     clearNotice();
     scheduleRender();
     try {
-      // Relative URLs work on GitHub Pages project sites and custom domains.
       const response = await fetch(`./data/prices.json?t=${Date.now()}`, { cache: 'no-store' });
       if (!response.ok) throw new Error(`The published data file returned HTTP ${response.status}.`);
       const snapshot = await response.json();
@@ -399,6 +397,5 @@
   });
   updateDirection();
   connect();
-  // Check for a new published snapshot while the site remains open.
   setInterval(() => { if (!document.hidden && !state.active) connect(); }, 5 * 60 * 1000);
 })();

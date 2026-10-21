@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""Build a static, rate-limited Warframe.market arcane price snapshot.
-
-Standard library only. Intended for GitHub Actions, not for visitor browsers.
-"""
+"""Generate a published arcane pricing and acquisition snapshot."""
 
 from __future__ import annotations
 

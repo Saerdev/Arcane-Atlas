@@ -4,8 +4,6 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  # Every 30 minutes, offset from the busy top-of-hour window. Scheduled
-  # executions are best-effort and can be delayed or dropped by GitHub.
   schedule:
     - cron: "17,47 * * * *"
 
@@ -37,10 +35,6 @@ jobs:
           WFM_USER_AGENT: ArcaneAtlas/2.1 (+https://github.com/${{ github.repository }})
         run: python3 scripts/update_prices.py --output site/data/prices.json
 
-      # GitHub disables scheduled workflows in public repos after 60 days of
-      # inactivity. This optional empty commit every ~30 inactive days keeps
-      # the public data feed operating, without storing all price snapshots
-      # in git history. GITHUB_TOKEN commits do not trigger new workflows.
       - name: Keep scheduled updates enabled
         if: github.event_name == 'schedule'
         run: |
