@@ -124,7 +124,7 @@
     const effect = item.effects || {};
     const effectKey = state.view === 'rank0' ? 'rank0' : 'rankMax';
     const effectText = typeof effect[effectKey] === 'string' && effect[effectKey].trim()
-      ? effect[effectKey].trim() : null;
+  ? effect[effectKey].replace(/\\r\\n|\\n|\\r/g, '\n').trim() : null;
     const shownRank = effectKey === 'rank0' ? 0
       : (Number.isInteger(effect.maxRank) ? effect.maxRank : item.maxRank);
     const rankLabel = shownRank > 0 ? `RANK ${shownRank}` : 'RANK 0';
